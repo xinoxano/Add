@@ -110,6 +110,19 @@ const mockEmployees = [
   { id: 5, name: 'Bente de Jong', position: 'Software Engineer', scope: 'Legal Entity 2 (default)' },
 ];
 
+function highlightMatch(text: string, query: string) {
+  if (!query) return text;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <span style={{ backgroundColor: '#fff59d', borderRadius: 2 }}>{text.slice(idx, idx + query.length)}</span>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 function App() {
   const [step, setStep] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -135,6 +148,10 @@ function App() {
   const [editDialogExpandedSubdomains, setEditDialogExpandedSubdomains] = useState<Record<string, boolean>>({});
   const [addDialogSearch, setAddDialogSearch] = useState('');
   const [editDialogSearch, setEditDialogSearch] = useState('');
+  const [manuallyCollapsedDialogSubdomains, setManuallyCollapsedDialogSubdomains] = useState<Record<string, boolean>>({});
+  const [lastAddDialogSearch, setLastAddDialogSearch] = useState('');
+  const [manuallyCollapsedEditDialogSubdomains, setManuallyCollapsedEditDialogSubdomains] = useState<Record<string, boolean>>({});
+  const [lastEditDialogSearch, setLastEditDialogSearch] = useState('');
 
   const handleAccessLevelChange = (index: number, level: AccessLevel) => {
     setPermissions(prev =>
@@ -339,6 +356,10 @@ function App() {
       ...prev,
       [subdomain]: !prev[subdomain]
     }));
+    setManuallyCollapsedEditDialogSubdomains(prev => ({
+      ...prev,
+      [subdomain]: editDialogExpandedSubdomains[subdomain] ? true : false
+    }));
   };
 
   const handleDialogSubdomainChevron = (subdomain: string) => {
@@ -346,57 +367,101 @@ function App() {
       ...prev,
       [subdomain]: !prev[subdomain]
     }));
+    setManuallyCollapsedDialogSubdomains(prev => ({
+      ...prev,
+      [subdomain]: expandedDialogSubdomains[subdomain] // true if currently expanded, so now will be collapsed
+        ? true
+        : false
+    }));
   };
 
-  // Fix the search functionality in the add dialog
+  // Add dialog: expand groups with matches on search, respect manual collapse
   useEffect(() => {
-    if (addDialogSearch === '' || dialogSelectedPermissions.length === 0) return;
+    if (addDialogSearch === '' || dialogSelectedPermissions.length === 0) {
+      setLastAddDialogSearch('');
+      return;
+    }
     const q = addDialogSearch.trim().toLowerCase();
+    setLastAddDialogSearch(q);
     const groupedBySubdomain = dialogSelectedPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
       const subdomain = permission.subdomain || '-';
       if (!acc[subdomain]) acc[subdomain] = [];
       acc[subdomain].push(permission);
       return acc;
     }, {});
-
     const filterPermission = (permission: any) =>
       permission.permission.toLowerCase().includes(q) ||
       (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
-
     const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
       const filteredPerms = (perms as any[]).filter(filterPermission);
       if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
       return acc;
     }, {});
-
-    const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
-    const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
+    // Expand groups with matches unless manually collapsed
+    setExpandedDialogSubdomains(prev => {
+      const newState = { ...prev };
+      Object.keys(groupedBySubdomain).forEach(subdomain => {
+        if (filteredGrouped[subdomain]) {
+          if (!manuallyCollapsedDialogSubdomains[subdomain]) {
+            newState[subdomain] = true;
+          }
+        } else {
+          newState[subdomain] = false;
+        }
+      });
+      return newState;
+    });
   }, [addDialogSearch, dialogSelectedPermissions]);
 
-  // Fix the search functionality in the edit dialog
+  // Reset manual collapse when search query changes
   useEffect(() => {
-    if (editDialogSearch === '' || editDomainPermissions.length === 0) return;
+    if (addDialogSearch !== lastAddDialogSearch) {
+      setManuallyCollapsedDialogSubdomains({});
+    }
+  }, [addDialogSearch, lastAddDialogSearch]);
+
+  // Edit dialog: expand groups with matches on search, respect manual collapse
+  useEffect(() => {
+    if (editDialogSearch === '' || editDomainPermissions.length === 0) {
+      setLastEditDialogSearch('');
+      return;
+    }
     const q = editDialogSearch.trim().toLowerCase();
+    setLastEditDialogSearch(q);
     const groupedBySubdomain = editDomainPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
       const subdomain = permission.subdomain || '-';
       if (!acc[subdomain]) acc[subdomain] = [];
       acc[subdomain].push(permission);
       return acc;
     }, {});
-
     const filterPermission = (permission: any) =>
       permission.permission.toLowerCase().includes(q) ||
       (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
-
     const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
       const filteredPerms = (perms as any[]).filter(filterPermission);
       if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
       return acc;
     }, {});
-
-    const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
-    const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
+    setEditDialogExpandedSubdomains(prev => {
+      const newState = { ...prev };
+      Object.keys(groupedBySubdomain).forEach(subdomain => {
+        if (filteredGrouped[subdomain]) {
+          if (!manuallyCollapsedEditDialogSubdomains[subdomain]) {
+            newState[subdomain] = true;
+          }
+        } else {
+          newState[subdomain] = false;
+        }
+      });
+      return newState;
+    });
   }, [editDialogSearch, editDomainPermissions]);
+
+  useEffect(() => {
+    if (editDialogSearch !== lastEditDialogSearch) {
+      setManuallyCollapsedEditDialogSubdomains({});
+    }
+  }, [editDialogSearch, lastEditDialogSearch]);
 
   const renderStepContent = () => {
     if (step === 0) {
@@ -632,7 +697,9 @@ function App() {
                                       transition: 'transform 0.2s',
                                     }}
                                   />
-                                  <Typography variant="subtitle1">{subdomain}</Typography>
+                                  <Typography variant="subtitle1">
+                                    {highlightMatch(subdomain, addDialogSearch)}
+                                  </Typography>
                                   <Chip
                                     label={`${safeSubPermissions.length} permissions`}
                                     size="small"
@@ -673,7 +740,9 @@ function App() {
                                             }}
                                             sx={{ mr: 2 }}
                                           />
-                                          <Typography variant="body1">{permission.name}</Typography>
+                                          <Typography variant="body1">
+                                            {highlightMatch(permission.name, addDialogSearch)}
+                                          </Typography>
                                           {permission.isSensitive && (
                                             <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
                                           )}
@@ -747,7 +816,9 @@ function App() {
                                     }}
                                     sx={{ mr: 2 }}
                                   />
-                                  <Typography variant="body1">{permission.name}</Typography>
+                                  <Typography variant="body1">
+                                    {highlightMatch(permission.name, addDialogSearch)}
+                                  </Typography>
                                   {permission.isSensitive && (
                                     <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
                                   )}
@@ -1173,7 +1244,9 @@ function App() {
                                     transition: 'transform 0.2s',
                                   }}
                                 />
-                                <Typography variant="subtitle1">{subdomain}</Typography>
+                                <Typography variant="subtitle1">
+                                  {highlightMatch(subdomain, editDialogSearch)}
+                                </Typography>
                                 <Chip
                                   label={`${safeSubPermissions.length} permissions`}
                                   size="small"
@@ -1214,7 +1287,9 @@ function App() {
                                           }}
                                           sx={{ mr: 2 }}
                                         />
-                                        <Typography variant="body1">{permission.name}</Typography>
+                                        <Typography variant="body1">
+                                          {highlightMatch(permission.name, editDialogSearch)}
+                                        </Typography>
                                         {permission.isSensitive && (
                                           <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
                                         )}
@@ -1287,7 +1362,9 @@ function App() {
                                   }}
                                   sx={{ mr: 2 }}
                                 />
-                                <Typography variant="body1">{permission.name}</Typography>
+                                <Typography variant="body1">
+                                  {highlightMatch(permission.name, editDialogSearch)}
+                                </Typography>
                                 {permission.isSensitive && (
                                   <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
                                 )}
