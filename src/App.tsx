@@ -136,10 +136,6 @@ function App() {
   const [addDialogSearch, setAddDialogSearch] = useState('');
   const [editDialogSearch, setEditDialogSearch] = useState('');
 
-  // Add refs to track which groups have been auto-expanded for the current search
-  const addDialogAutoExpandedRef = React.useRef<{[search: string]: Set<string>}>({});
-  const editDialogAutoExpandedRef = React.useRef<{[search: string]: Set<string>}>({});
-
   const handleAccessLevelChange = (index: number, level: AccessLevel) => {
     setPermissions(prev =>
       prev.map((p, i) =>
@@ -191,7 +187,7 @@ function App() {
         accessLevel: permission.supportedActions.includes('View') ? 'View' : undefined,
         isSensitive: permission.isSensitive,
       })));
-      // Collapse all groups by default
+      // Initialize all groups as collapsed
       const groupedBySubdomain = domain.permissions.reduce((acc: Record<string, any[]>, permission: any) => {
         const subdomain = permission.subdomain || '-';
         if (!acc[subdomain]) acc[subdomain] = [];
@@ -200,16 +196,14 @@ function App() {
       }, {});
       const collapsedState: Record<string, boolean> = {};
       Object.keys(groupedBySubdomain).forEach(subdomain => {
-        if (subdomain !== '-') collapsedState[subdomain] = false;
+        collapsedState[subdomain] = false; // All groups start collapsed
       });
       setExpandedDialogSubdomains(collapsedState);
       setAddDialogSearch('');
-      addDialogAutoExpandedRef.current = {};
     } else {
       setDialogSelectedPermissions([]);
       setExpandedDialogSubdomains({});
       setAddDialogSearch('');
-      addDialogAutoExpandedRef.current = {};
     }
     setCategoryPopoverAnchor(null);
     setIsDialogOpen(true);
@@ -288,20 +282,6 @@ function App() {
     }));
   };
 
-  const handleDialogSubdomainChevron = (subdomain: string) => {
-    setExpandedDialogSubdomains(prev => {
-      const newState = { ...prev, [subdomain]: !prev[subdomain] };
-      const q = addDialogSearch.trim().toLowerCase();
-      if (!addDialogAutoExpandedRef.current[q]) addDialogAutoExpandedRef.current[q] = new Set();
-      if (newState[subdomain]) {
-        addDialogAutoExpandedRef.current[q].add(subdomain);
-      } else {
-        addDialogAutoExpandedRef.current[q].delete(subdomain);
-      }
-      return newState;
-    });
-  };
-
   // Handler to save changes from edit dialog
   const handleSaveEditDialog = () => {
     setPermissions([...editDialogPermissions]);
@@ -349,108 +329,73 @@ function App() {
       });
       setEditDialogExpandedSubdomains(collapsedState);
       setEditDialogSearch('');
-      editDialogAutoExpandedRef.current = {};
     }
     setIsEditDialogOpen(true);
   };
 
   // Edit dialog: handle group chevron click and update auto-expanded ref
   const handleEditDialogSubdomainChevron = (subdomain: string) => {
-    setEditDialogExpandedSubdomains(prev => {
-      const newState = { ...prev, [subdomain]: !prev[subdomain] };
-      const q = editDialogSearch.trim().toLowerCase();
-      if (!editDialogAutoExpandedRef.current[q]) editDialogAutoExpandedRef.current[q] = new Set();
-      if (newState[subdomain]) {
-        editDialogAutoExpandedRef.current[q].add(subdomain);
-      } else {
-        editDialogAutoExpandedRef.current[q].delete(subdomain);
-      }
-      return newState;
-    });
+    setEditDialogExpandedSubdomains(prev => ({
+      ...prev,
+      [subdomain]: !prev[subdomain]
+    }));
   };
 
-  // Handler to save changes from edit dialog
-  const handleSaveEditDomain = () => {
-    if (!editDomain) return;
-    
-    // Remove all existing permissions for this domain
-    const updatedPermissions = permissions.filter(p => p.domain !== editDomain);
-    
-    // Add only the enabled permissions
-    const newPermissions = editDomainPermissions
-      .filter(p => p.isEnabled)
-      .map(p => ({
-        domain: p.domain,
-        subdomain: p.subdomain,
-        permission: p.permission,
-        isEnabled: true,
-        accessLevel: p.accessLevel,
-        isSensitive: p.isSensitive
-      }));
-    
-    setPermissions([...updatedPermissions, ...newPermissions]);
-    setIsEditDialogOpen(false);
-    setEditDomain(null);
-    setEditDomainPermissions([]);
+  const handleDialogSubdomainChevron = (subdomain: string) => {
+    setExpandedDialogSubdomains(prev => ({
+      ...prev,
+      [subdomain]: !prev[subdomain]
+    }));
   };
 
-  // Handler to close edit dialog
-  const handleCloseEditDomain = () => {
-    setIsEditDialogOpen(false);
-  };
-
-  // Add dialog: minimal robust expand/collapse logic
+  // Fix the search functionality in the add dialog
   useEffect(() => {
-    if (!dialogCategory || addDialogSearch === '') return;
-    const domain = permissionsData.find(d => d.name === dialogCategory);
-    if (!domain) return;
-    const groupedBySubdomain = domain.permissions.reduce((acc: any, permission: any) => {
+    if (addDialogSearch === '' || dialogSelectedPermissions.length === 0) return;
+    const q = addDialogSearch.trim().toLowerCase();
+    const groupedBySubdomain = dialogSelectedPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
       const subdomain = permission.subdomain || '-';
       if (!acc[subdomain]) acc[subdomain] = [];
       acc[subdomain].push(permission);
       return acc;
     }, {});
-    const q = addDialogSearch.trim().toLowerCase();
-    if (!addDialogAutoExpandedRef.current[q]) {
-      addDialogAutoExpandedRef.current[q] = new Set();
-    }
-    const filterPermission = (permission: any) =>
-      permission.name.toLowerCase().includes(q) ||
-      (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
-    Object.entries(groupedBySubdomain).forEach(([subdomain, perms]) => {
-      if (subdomain === '-') return;
-      const hasMatch = (perms as any[]).some(filterPermission);
-      if (hasMatch && !addDialogAutoExpandedRef.current[q].has(subdomain) && !expandedDialogSubdomains[subdomain]) {
-        setExpandedDialogSubdomains(prev => ({ ...prev, [subdomain]: true }));
-        addDialogAutoExpandedRef.current[q].add(subdomain);
-      }
-    });
-  }, [addDialogSearch, dialogCategory]);
 
-  // Edit dialog: minimal robust expand/collapse logic
+    const filterPermission = (permission: any) =>
+      permission.permission.toLowerCase().includes(q) ||
+      (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
+
+    const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
+      const filteredPerms = (perms as any[]).filter(filterPermission);
+      if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
+      return acc;
+    }, {});
+
+    const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
+    const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
+  }, [addDialogSearch, dialogSelectedPermissions]);
+
+  // Fix the search functionality in the edit dialog
   useEffect(() => {
     if (editDialogSearch === '' || editDomainPermissions.length === 0) return;
+    const q = editDialogSearch.trim().toLowerCase();
     const groupedBySubdomain = editDomainPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
       const subdomain = permission.subdomain || '-';
       if (!acc[subdomain]) acc[subdomain] = [];
       acc[subdomain].push(permission);
       return acc;
     }, {});
-    const q = editDialogSearch.trim().toLowerCase();
-    if (!editDialogAutoExpandedRef.current[q]) {
-      editDialogAutoExpandedRef.current[q] = new Set();
-    }
+
     const filterPermission = (permission: any) =>
       permission.permission.toLowerCase().includes(q) ||
       (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
-    Object.entries(groupedBySubdomain).forEach(([subdomain, perms]) => {
-      if (subdomain === '-') return;
-      const hasMatch = (perms as any[]).some(filterPermission);
-      if (hasMatch && !editDialogAutoExpandedRef.current[q].has(subdomain) && !editDialogExpandedSubdomains[subdomain]) {
-        setEditDialogExpandedSubdomains(prev => ({ ...prev, [subdomain]: true }));
-        editDialogAutoExpandedRef.current[q].add(subdomain);
-      }
-    });
+
+    const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
+      const filteredPerms = (perms as any[]).filter(filterPermission);
+      if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
+      return acc;
+    }, {});
+
+    const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
+    const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
   }, [editDialogSearch, editDomainPermissions]);
 
   const renderStepContent = () => {
@@ -642,15 +587,7 @@ function App() {
                       if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
                       return acc;
                     }, {});
-                    // Auto-expand groups with matches (but do not collapse any)
-                    Object.keys(filteredGrouped).forEach(subdomain => {
-                      if (subdomain !== '-') {
-                        if (!expandedDialogSubdomains[subdomain]) {
-                          setExpandedDialogSubdomains(prev => ({ ...prev, [subdomain]: true }));
-                        }
-                      }
-                    });
-                    // Show grouped (not '-') first, then ungrouped ('-')
+                    // Remove the auto-expand logic
                     const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
                     const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
                     if (groupedEntries.length === 0 && ungroupedEntries.length === 0) {
@@ -724,11 +661,11 @@ function App() {
                                       >
                                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                           <Switch
-                                            checked={dialogSelectedPermissions.some(p => p.permission === permission.name && p.isEnabled)}
+                                            checked={permission.isEnabled}
                                             onChange={() => {
-                                              setDialogSelectedPermissions(prev =>
+                                              setEditDomainPermissions(prev =>
                                                 prev.map(p =>
-                                                  p.permission === permission.name
+                                                  p.permission === permission.permission && p.subdomain === permission.subdomain
                                                     ? { ...p, isEnabled: !p.isEnabled }
                                                     : p
                                                 )
@@ -747,7 +684,11 @@ function App() {
                                               <ToggleButtonGroup
                                                 value={permission.accessLevel}
                                                 exclusive
-                                                onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map((p, i) => i === index ? { ...p, accessLevel: value } : p))}
+                                                onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map(p =>
+                                                  p.permission === permission.permission && p.subdomain === permission.subdomain
+                                                    ? { ...p, accessLevel: value }
+                                                    : p
+                                                ))}
                                                 size="small"
                                               >
                                                 <ToggleButton value="View" disabled={!permission.supportedActions.includes('View')}>
@@ -794,11 +735,11 @@ function App() {
                               >
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                                   <Switch
-                                    checked={dialogSelectedPermissions.some(p => p.permission === permission.name && p.isEnabled)}
+                                    checked={permission.isEnabled}
                                     onChange={() => {
-                                      setDialogSelectedPermissions(prev =>
+                                      setEditDomainPermissions(prev =>
                                         prev.map(p =>
-                                          p.permission === permission.name
+                                          p.permission === permission.permission && p.subdomain === permission.subdomain
                                             ? { ...p, isEnabled: !p.isEnabled }
                                             : p
                                         )
@@ -817,7 +758,11 @@ function App() {
                                       <ToggleButtonGroup
                                         value={permission.accessLevel}
                                         exclusive
-                                        onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map((p, i) => i === index ? { ...p, accessLevel: value } : p))}
+                                        onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map(p =>
+                                          p.permission === permission.permission && p.subdomain === permission.subdomain
+                                            ? { ...p, accessLevel: value }
+                                            : p
+                                        ))}
                                         size="small"
                                       >
                                         <ToggleButton value="View" disabled={!permission.supportedActions.includes('View')}>
@@ -1142,14 +1087,14 @@ function App() {
           {isEditDialogOpen && editDomain && (
             <Dialog
               open={isEditDialogOpen}
-              onClose={handleCloseEditDomain}
+              onClose={handleCloseEditDialog}
               fullWidth
               maxWidth="xl"
               PaperProps={{ sx: { minHeight: '90vh', borderRadius: 3 } }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 3, pb: 0 }}>
                 <DialogTitle sx={{ p: 0 }}>Edit Permissions - {editDomain}</DialogTitle>
-                <IconButton onClick={handleCloseEditDomain}>
+                <IconButton onClick={handleCloseEditDialog}>
                   <CloseIcon />
                 </IconButton>
               </Box>
@@ -1185,13 +1130,6 @@ function App() {
                     if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
                     return acc;
                   }, {});
-                  Object.keys(filteredGrouped).forEach(subdomain => {
-                    if (subdomain !== '-') {
-                      if (!editDialogExpandedSubdomains[subdomain]) {
-                        setEditDialogExpandedSubdomains(prev => ({ ...prev, [subdomain]: true }));
-                      }
-                    }
-                  });
                   const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
                   const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
                   if (groupedEntries.length === 0 && ungroupedEntries.length === 0) {
@@ -1249,7 +1187,7 @@ function App() {
                                 {safeSubPermissions.map((permission: any, index: number) =>
                                   permission && permission.supportedActions ? (
                                     <Box
-                                      key={permission.permission}
+                                      key={permission.name}
                                       sx={{
                                         p: 2,
                                         mb: 1,
@@ -1276,7 +1214,7 @@ function App() {
                                           }}
                                           sx={{ mr: 2 }}
                                         />
-                                        <Typography variant="body1">{permission.permission}</Typography>
+                                        <Typography variant="body1">{permission.name}</Typography>
                                         {permission.isSensitive && (
                                           <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
                                         )}
@@ -1319,7 +1257,7 @@ function App() {
                         return safeSubPermissions.map((permission: any, index: number) =>
                           permission && permission.supportedActions ? (
                             <Box
-                              key={permission.permission}
+                              key={permission.name}
                               sx={{
                                 p: 2,
                                 mb: 1,
@@ -1349,7 +1287,7 @@ function App() {
                                   }}
                                   sx={{ mr: 2 }}
                                 />
-                                <Typography variant="body1">{permission.permission}</Typography>
+                                <Typography variant="body1">{permission.name}</Typography>
                                 {permission.isSensitive && (
                                   <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
                                 )}
@@ -1388,11 +1326,11 @@ function App() {
                 })()}
               </DialogContent>
               <DialogActions sx={{ p: 3 }}>
-                <Button onClick={handleCloseEditDomain} color="inherit">
+                <Button onClick={handleCloseEditDialog} color="inherit">
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleSaveEditDomain}
+                  onClick={handleSaveEditDialog}
                   variant="contained"
                 >
                   Save Changes
