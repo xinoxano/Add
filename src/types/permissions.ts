@@ -16,6 +16,7 @@ export interface Permission {
   isSensitive: boolean;
   subPermissions?: SubPermission[];
   subdomain?: string;
+  noScopeLimit?: boolean;
 }
 
 export interface Domain {

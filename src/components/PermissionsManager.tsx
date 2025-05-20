@@ -36,6 +36,7 @@ export interface SelectedPermission {
   isEnabled: boolean;
   accessLevel?: AccessLevel;
   isSensitive: boolean;
+  noScopeLimit?: boolean;
 }
 
 export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
