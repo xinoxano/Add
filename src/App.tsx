@@ -11,11 +11,7 @@ import {
   Button,
   IconButton,
   Chip,
-  Paper,
-  ToggleButtonGroup,
-  ToggleButton,
   CssBaseline,
-  Breadcrumbs,
   Switch,
   Collapse
 } from '@mui/material';
@@ -39,7 +35,6 @@ import ImportExportIcon from '@mui/icons-material/ImportExportOutlined';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined';
 import CloseIcon from '@mui/icons-material/Close';
-import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { theme } from './theme';
 import { AccessLevel } from './types/permissions';
@@ -47,7 +42,6 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
-import Divider from '@mui/material/Divider';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -55,6 +49,7 @@ import DialogActions from '@mui/material/DialogActions';
 import Popover from '@mui/material/Popover';
 import { permissionsData } from './data/permissionsData';
 import { SelectedPermission } from './components/PermissionsManager';
+import Divider from '@mui/material/Divider';
 
 const steps = ['Get started', 'Permissions', 'Assignees', 'Confirm'];
 const drawerWidth = 240;
@@ -127,7 +122,6 @@ function App() {
   const [step, setStep] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [permissions, setPermissions] = useState<SelectedPermission[]>([]);
-  const [expandedSubdomains, setExpandedSubdomains] = useState<Record<string, boolean>>({});
   const [name, setName] = useState('');
   const [scope, setScope] = useState('');
   const [description, setDescription] = useState('');
@@ -142,7 +136,6 @@ function App() {
   const [expandedDialogSubdomains, setExpandedDialogSubdomains] = useState<Record<string, boolean>>({});
   const [categorySearch, setCategorySearch] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editDialogPermissions, setEditDialogPermissions] = useState<SelectedPermission[]>([]);
   const [editDomain, setEditDomain] = useState<string | null>(null);
   const [editDomainPermissions, setEditDomainPermissions] = useState<SelectedPermission[]>([]);
   const [editDialogExpandedSubdomains, setEditDialogExpandedSubdomains] = useState<Record<string, boolean>>({});
@@ -152,6 +145,8 @@ function App() {
   const [lastAddDialogSearch, setLastAddDialogSearch] = useState('');
   const [manuallyCollapsedEditDialogSubdomains, setManuallyCollapsedEditDialogSubdomains] = useState<Record<string, boolean>>({});
   const [lastEditDialogSearch, setLastEditDialogSearch] = useState('');
+  const [initialDialogSelectedPermissions, setInitialDialogSelectedPermissions] = useState<SelectedPermission[]>([]);
+  const [initialEditDomainPermissions, setInitialEditDomainPermissions] = useState<SelectedPermission[]>([]);
 
   const handleAccessLevelChange = (index: number, level: AccessLevel) => {
     setPermissions(prev =>
@@ -196,14 +191,16 @@ function App() {
     setDialogCategory(category);
     const domain = permissionsData.find(d => d.name === category);
     if (domain) {
-      setDialogSelectedPermissions(domain.permissions.map(permission => ({
+      const perms = domain.permissions.map(permission => ({
         domain: category,
         subdomain: permission.subdomain || '-',
         permission: permission.name,
         isEnabled: false,
-        accessLevel: permission.supportedActions.includes('View') ? 'View' : undefined,
+        accessLevel: permission.supportedActions.includes('View') ? ('View' as AccessLevel) : undefined,
         isSensitive: permission.isSensitive,
-      })));
+      }));
+      setDialogSelectedPermissions(perms);
+      setInitialDialogSelectedPermissions(perms);
       // Initialize all groups as collapsed
       const groupedBySubdomain = domain.permissions.reduce((acc: Record<string, any[]>, permission: any) => {
         const subdomain = permission.subdomain || '-';
@@ -219,6 +216,7 @@ function App() {
       setAddDialogSearch('');
     } else {
       setDialogSelectedPermissions([]);
+      setInitialDialogSelectedPermissions([]);
       setExpandedDialogSubdomains({});
       setAddDialogSearch('');
     }
@@ -267,24 +265,25 @@ function App() {
     setDialogCategory('');
     setDialogSelectedPermissions([]);
   };
-  const handleDialogPermissionToggle = (permission: any, subdomain: string, subPermissions: any[]) => {
+  const handleDialogPermissionToggle = (permission: any, subdomain: string) => {
     setDialogSelectedPermissions(prev => {
-      const existing = prev.find(p => p.permission === permission.name);
-      let newSelected: SelectedPermission[];
+      const existing = prev.find(p => p.permission === permission.name && p.subdomain === subdomain);
       if (existing) {
-        newSelected = prev.filter(p => p.permission !== permission.name);
+        return prev.map(p =>
+          p.permission === permission.name && p.subdomain === subdomain
+            ? { ...p, isEnabled: !p.isEnabled }
+            : p
+        );
       } else {
-        const newPermission: SelectedPermission = {
+        return [...prev, {
           domain: dialogCategory,
           subdomain: subdomain,
           permission: permission.name,
           isEnabled: true,
-          accessLevel: permission.supportedActions.includes('View') ? ('View' as AccessLevel) : undefined,
+          accessLevel: permission.supportedActions.includes('View') ? 'View' : undefined,
           isSensitive: permission.isSensitive,
-        };
-        newSelected = [...prev, newPermission];
+        }];
       }
-      return newSelected;
     });
   };
   const handleDialogSave = () => {
@@ -292,48 +291,31 @@ function App() {
     handleCloseDialog();
   };
 
-  const handleSubdomainToggle = (subdomain: string) => {
-    setExpandedSubdomains(prev => ({
-      ...prev,
-      [subdomain]: !prev[subdomain]
-    }));
-  };
-
-  // Handler to save changes from edit dialog
-  const handleSaveEditDialog = () => {
-    setPermissions([...editDialogPermissions]);
-    setIsEditDialogOpen(false);
-  };
-
-  // Handler to close edit dialog
-  const handleCloseEditDialog = () => {
-    setIsEditDialogOpen(false);
-  };
-
-  const handleOpenEditDialog = (permission: SelectedPermission) => {
-    setIsEditDialogOpen(true);
-    setEditDialogPermissions([permission]);
-  };
-
-  // Handler to open edit dialog for a domain
   const handleOpenEditDomain = (domain: string) => {
     setEditDomain(domain);
+    // Always get the latest permissions for this domain
     const domainData = permissionsData.find(d => d.name === domain);
     if (domainData) {
+      // Get existing permissions for this domain from the latest permissions state
       const existingPermissions = permissions.filter(p => p.domain === domain);
+      // Create new permissions array with correct initial states
       const domainPermissions = domainData.permissions.map(permission => {
-        const existingPermission = existingPermissions.find(p => p.permission === permission.name);
+        const subdomain = permission.subdomain || '-';
+        const existingPermission = existingPermissions.find(p => p.permission === permission.name && p.subdomain === subdomain);
         return {
           domain: domain,
-          subdomain: permission.subdomain || '-',
+          subdomain: subdomain,
           permission: permission.name,
           isEnabled: existingPermission ? existingPermission.isEnabled : false,
-          accessLevel: existingPermission ? existingPermission.accessLevel : 'View',
+          accessLevel: existingPermission ? existingPermission.accessLevel : (permission.supportedActions.includes('View') ? 'View' : undefined),
           isSensitive: permission.isSensitive,
+          noScopeLimit: permission.noScopeLimit,
           supportedActions: permission.supportedActions
         };
       });
-      setEditDomainPermissions(domainPermissions);
+      setEditDomainPermissions(domainPermissions.map(p => ({ ...p }))); // ensure new objects
+      setInitialEditDomainPermissions(domainPermissions.map(p => ({ ...p })));
+      // Set up expanded states for subdomains
       const groupedBySubdomain = domainPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
         const subdomain = permission.subdomain || '-';
         if (!acc[subdomain]) acc[subdomain] = [];
@@ -342,12 +324,46 @@ function App() {
       }, {});
       const collapsedState: Record<string, boolean> = {};
       Object.keys(groupedBySubdomain).forEach(subdomain => {
-        if (subdomain !== '-') collapsedState[subdomain] = false;
+        if (subdomain !== '-') {
+          collapsedState[subdomain] = groupedBySubdomain[subdomain].some(p => p.isEnabled);
+        }
       });
       setEditDialogExpandedSubdomains(collapsedState);
       setEditDialogSearch('');
     }
     setIsEditDialogOpen(true);
+  };
+
+  // Handler for toggling a permission in edit dialog
+  const handleEditPermissionToggle = (permissionName: string, subdomain: string) => {
+    setEditDomainPermissions(prev =>
+      prev.map(p =>
+        p.permission === permissionName && p.subdomain === subdomain
+          ? { ...p, isEnabled: !p.isEnabled }
+          : p
+      )
+    );
+  };
+
+  // Handler to save changes from edit dialog
+  const handleSaveEditDialog = () => {
+    if (!editDomain) return;
+    
+    // Only keep enabled permissions for the domain, remove domain if all are disabled
+    const enabledPermissions = editDomainPermissions.filter(p => p.isEnabled);
+    
+    setPermissions(prev => {
+      // Remove all permissions for this domain
+      const filtered = prev.filter(p => p.domain !== editDomain);
+      // If any permissions are enabled, add them back
+      if (enabledPermissions.length > 0) {
+        return [...filtered, ...enabledPermissions];
+      }
+      // If none enabled, just return filtered (domain removed)
+      return filtered;
+    });
+    
+    setIsEditDialogOpen(false);
   };
 
   // Edit dialog: handle group chevron click and update auto-expanded ref
@@ -428,7 +444,7 @@ function App() {
     }
     const q = editDialogSearch.trim().toLowerCase();
     setLastEditDialogSearch(q);
-    const groupedBySubdomain = editDomainPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
+    const groupedBySubdomain = editDomainPermissions.reduce((acc: Record<string, typeof editDomainPermissions>, permission) => {
       const subdomain = permission.subdomain || '-';
       if (!acc[subdomain]) acc[subdomain] = [];
       acc[subdomain].push(permission);
@@ -463,54 +479,345 @@ function App() {
     }
   }, [editDialogSearch, lastEditDialogSearch]);
 
+  // Helper to compare permission arrays
+  function permissionsChanged(current: SelectedPermission[], initial: SelectedPermission[]) {
+    if (current.length !== initial.length) return true;
+    const sortFn = (a: SelectedPermission, b: SelectedPermission) =>
+      a.permission.localeCompare(b.permission) || (a.subdomain || '').localeCompare(b.subdomain || '');
+    const sortedCurrent = [...current].sort(sortFn);
+    const sortedInitial = [...initial].sort(sortFn);
+    for (let i = 0; i < sortedCurrent.length; i++) {
+      const a = sortedCurrent[i];
+      const b = sortedInitial[i];
+      if (
+        a.permission !== b.permission ||
+        (a.subdomain || '') !== (b.subdomain || '') ||
+        a.isEnabled !== b.isEnabled ||
+        a.accessLevel !== b.accessLevel
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Grouping/filtering logic and permissionsContent must be inside the renderStepContent or App function so all variables are in scope.
+  const groupedBySubdomain = editDomainPermissions.reduce((acc: Record<string, typeof editDomainPermissions>, permission) => {
+    const subdomain = permission.subdomain || '-';
+    if (!acc[subdomain]) acc[subdomain] = [];
+    acc[subdomain].push(permission);
+    return acc;
+  }, {});
+  const q = editDialogSearch.trim().toLowerCase();
+  const filterPermission = (permission: any) =>
+    permission.permission.toLowerCase().includes(q) ||
+    (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
+  const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
+    const filteredPerms = (perms as any[]).filter(filterPermission);
+    if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
+    return acc;
+  }, {});
+  const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-') as [string, any[]][];
+  const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-') as [string, any[]][];
+
+  const permissionsContent = groupedEntries.length === 0 && ungroupedEntries.length === 0 ? (
+    <Typography sx={{ p: 2 }}>No permissions found.</Typography>
+  ) : (
+    <Box>
+      {/* Grouped permissions */}
+      {groupedEntries.map(([subdomain, subPermissions]: [string, any[]]) => {
+        const expanded = editDialogExpandedSubdomains[subdomain] || false;
+        const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
+        return (
+          <Box
+            key={subdomain}
+            sx={{
+              mb: 2,
+              borderRadius: 1,
+              overflow: 'hidden',
+              border: expanded ? '1px solid' : 'none',
+              borderColor: expanded ? 'primary.main' : 'transparent',
+              boxShadow: expanded ? 2 : 0,
+              transition: 'border 0.2s, box-shadow 0.2s',
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                p: 2,
+                bgcolor: 'background.default',
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, cursor: 'pointer' }}
+                onClick={() => handleEditDialogSubdomainChevron(subdomain)}
+              >
+                <ExpandMoreIcon
+                  sx={{
+                    transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s',
+                  }}
+                />
+                <Typography variant="subtitle1">
+                  {highlightMatch(subdomain, editDialogSearch)}
+                </Typography>
+                <Chip
+                  label={`${safeSubPermissions.length} permissions`}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+              </Box>
+              {expanded && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderRadius: 10,
+                    fontWeight: 500,
+                    fontSize: 14,
+                    textTransform: 'none',
+                    ml: 2,
+                    minWidth: 110,
+                    border: '1px solid #B0B0B0',
+                    color: '#7c3aed',
+                    background: '#fff',
+                    '&:hover': {
+                      background: '#f3e8ff',
+                      border: '1px solid #B0B0B0',
+                    },
+                  }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    const allEnabled = safeSubPermissions.every((permission: any) => permission.isEnabled);
+                    setEditDomainPermissions(prev =>
+                      prev.map(p =>
+                        p.subdomain === subdomain
+                          ? { ...p, isEnabled: !allEnabled }
+                          : p
+                      )
+                    );
+                  }}
+                >
+                  {safeSubPermissions.every((permission: any) => permission.isEnabled)
+                    ? 'Disable all'
+                    : 'Enable all'}
+                </Button>
+              )}
+            </Box>
+            <Collapse in={expanded}>
+              <Box sx={{ p: 2 }}>
+                {safeSubPermissions.map((permission: any) => (
+                  <Box
+                    key={permission.permission}
+                    sx={{
+                      p: 2,
+                      mb: 1,
+                      border: '1px solid',
+                      borderColor: permission.isEnabled ? 'primary.main' : 'divider',
+                      borderRadius: 1,
+                      '&:hover': {
+                        borderColor: 'primary.main',
+                        bgcolor: 'action.hover',
+                      },
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Switch
+                        checked={permission.isEnabled}
+                        onChange={() => handleEditPermissionToggle(permission.permission, permission.subdomain)}
+                        sx={{ mr: 2 }}
+                      />
+                      <Typography variant="body1">{highlightMatch(permission.permission, editDialogSearch)}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {permission.isSensitive && (
+                        <Chip label="Sensitive" size="small" color="error" />
+                      )}
+                      {permission.noScopeLimit && (
+                        <Chip label="No scope limit" size="small" color="info" />
+                      )}
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Collapse>
+          </Box>
+        );
+      })}
+      {/* Ungrouped permissions */}
+      {ungroupedEntries.map(([subdomain, subPermissions]: [string, any[]]) => {
+        const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
+        return safeSubPermissions.map((permission: any) => (
+          <Box
+            key={permission.permission}
+            sx={{
+              p: 2,
+              mb: 1,
+              border: '1px solid',
+              borderColor: permission.isEnabled ? 'primary.main' : 'divider',
+              borderRadius: 1,
+              '&:hover': {
+                borderColor: 'primary.main',
+                bgcolor: 'action.hover',
+              },
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Switch
+                checked={permission.isEnabled}
+                onChange={() => handleEditPermissionToggle(permission.permission, permission.subdomain)}
+                sx={{ mr: 2 }}
+              />
+              <Typography variant="body1">{highlightMatch(permission.permission, editDialogSearch)}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {permission.isSensitive && (
+                <Chip label="Sensitive" size="small" color="error" />
+              )}
+              {permission.noScopeLimit && (
+                <Chip label="No scope limit" size="small" color="info" />
+              )}
+            </Box>
+          </Box>
+        ));
+      })}
+    </Box>
+  );
+
   const renderStepContent = () => {
     if (step === 0) {
       return (
-        <Box sx={{ bgcolor: '#fff', borderRadius: 2, p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-            Get started
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Give a name, a default data scope and general description
-          </Typography>
-          <Box component="form" noValidate autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField
-              label="Name"
-              placeholder="Enter a unique name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              fullWidth
-              variant="outlined"
-              size="medium"
-            />
-            <TextField
-              select
-              label="Scope access"
-              value={scope}
-              onChange={e => setScope(e.target.value)}
-              fullWidth
-              variant="outlined"
-              size="medium"
-            >
-              {scopeOptions.map(option => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Description"
-              placeholder="A summary of the type of people that should be assigned to this permissions set, their tasks and access rights."
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              fullWidth
-              multiline
-              minRows={3}
-              variant="outlined"
-              size="medium"
-              inputProps={{ maxLength: 500 }}
-              helperText={`${description.length}/500 characters`}
-            />
+        <Box sx={{ p: 0, maxWidth: '100vw', minHeight: 'calc(100vh - 80px)', bgcolor: '#fff' }}>
+          <Box sx={{ bgcolor: '#fff', borderRadius: 2, p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+              Get started
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Give a name, a default data scope and general description
+            </Typography>
+            <Box component="form" noValidate autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <TextField
+                label="Name"
+                placeholder="Enter a unique name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="medium"
+              />
+              <TextField
+                select
+                label="Scope access"
+                value={scope}
+                onChange={e => setScope(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="medium"
+              >
+                {scopeOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Description"
+                placeholder="A summary of the type of people that should be assigned to this permissions set, their tasks and access rights."
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                fullWidth
+                multiline
+                minRows={3}
+                variant="outlined"
+                size="medium"
+                inputProps={{ maxLength: 500 }}
+                helperText={`${description.length}/500 characters`}
+              />
+            </Box>
+          </Box>
+          <Box
+            sx={{
+              position: 'fixed',
+              left: `${drawerWidth}px`,
+              bottom: 0,
+              width: `calc(100vw - ${drawerWidth}px)`,
+              bgcolor: '#fff',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              py: 2,
+              px: 6,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              zIndex: 1200,
+            }}
+          >
+            <Box sx={{ display: 'flex', gap: '16px' }}>
+              <Button
+                variant="outlined"
+                sx={{
+                  display: 'flex',
+                  minWidth: 60,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: 10,
+                  height: 32,
+                  padding: '7px 12px',
+                  fontWeight: 500,
+                  fontSize: 16,
+                  textTransform: 'none',
+                  background: '#fff',
+                  color: '#111',
+                  border: '1px solid #B0B0B0',
+                  boxShadow: 'none',
+                  gap: 2,
+                  '&:hover': {
+                    background: '#f3e8ff',
+                    border: '1px solid #B0B0B0',
+                  },
+                }}
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+              >
+                Back
+              </Button>
+              <Button
+                variant="contained"
+                sx={{
+                  display: 'flex',
+                  height: 32,
+                  minWidth: 60,
+                  padding: '7px 12px',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 2,
+                  borderRadius: 10,
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
+                  boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                  color: '#fff',
+                  fontWeight: 500,
+                  fontSize: 16,
+                  textTransform: 'none',
+                  boxShadowColor: 'rgba(176,0,255,0.05)',
+                  '&:hover': {
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                  },
+                }}
+                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+              >
+                Next
+              </Button>
+            </Box>
           </Box>
         </Box>
       );
@@ -518,18 +825,37 @@ function App() {
 
     if (step === 1) {
       return (
-        <Box sx={{ p: 3, maxWidth: 900, margin: '0 auto' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h5" component="h2">
-              Permissions
-            </Typography>
+        <Box sx={{ p: 0, maxWidth: '100vw', minHeight: 'calc(100vh - 80px)', bgcolor: '#fff' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 4, pt: 4, pb: 2 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, textAlign: 'left' }}>Permissions</Typography>
             <Button
               variant="contained"
-              startIcon={<AddIcon />}
+              color="primary"
+              sx={{
+                display: 'flex',
+                height: 32,
+                minWidth: 60,
+                padding: '7px 12px',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 2,
+                borderRadius: 10,
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
+                boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                color: '#fff',
+                fontWeight: 500,
+                fontSize: 16,
+                textTransform: 'none',
+                boxShadowColor: 'rgba(176,0,255,0.05)',
+                '&:hover': {
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                },
+              }}
+              endIcon={<ExpandMoreIcon />}
               onClick={handleOpenCategoryPopover}
               disabled={isDialogOpen}
             >
-              Add Permission
+              Add permissions
             </Button>
           </Box>
           <Popover
@@ -540,6 +866,7 @@ function App() {
             transformOrigin={{ vertical: 'top', horizontal: 'left' }}
             PaperProps={{ sx: { minWidth: 320, maxHeight: 400, overflowY: 'auto', borderRadius: 2 } }}
           >
+            {/* Popover content: search and category list */}
             <Box sx={{ p: 2, pt: 2, pb: 1 }}>
               <TextField
                 value={categorySearch}
@@ -589,288 +916,177 @@ function App() {
               <MenuItem disabled>No results found</MenuItem>
             )}
           </Popover>
-          {/* Only one card per unique domain */}
-          {Array.from(new Set(permissions.map(p => p.domain))).map(domain => (
-            <Box
-              key={domain}
-              onClick={() => handleOpenEditDomain(domain)}
-              sx={{ cursor: 'pointer', p: 2, mb: 2, border: '1px solid', borderRadius: 2 }}
-            >
-              <Typography variant="h6">{domain}</Typography>
-            </Box>
-          ))}
-          {/* Full-width dialog for adding permissions (opens after category selection) */}
-          <Dialog
-            open={isDialogOpen}
-            onClose={handleCloseDialog}
-            fullWidth
-            maxWidth="xl"
-            PaperProps={{ sx: { minHeight: '90vh', borderRadius: 3 } }}
+          <Box sx={{ px: 4, pt: 2 }}>
+            {/* Empty state */}
+            {permissions.length === 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', mt: 4 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: 'text.primary' }}>Add permission</Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>Permissions will be listed here.</Typography>
+              </Box>
+            )}
+            {Array.from(new Set(permissions.map(p => p.domain))).map(domain => (
+              <Box
+                key={domain}
+                onClick={() => handleOpenEditDomain(domain)}
+                sx={{ cursor: 'pointer', p: 2, mb: 2, border: '1px solid', borderRadius: 2, bgcolor: '#fafafd', '&:hover': { borderColor: 'primary.main', boxShadow: 1 } }}
+              >
+                <Typography variant="h6">{domain}</Typography>
+              </Box>
+            ))}
+          </Box>
+          {/* Footer */}
+          <Box
+            sx={{
+              position: 'fixed',
+              left: `${drawerWidth}px`,
+              bottom: 0,
+              width: `calc(100vw - ${drawerWidth}px)`,
+              bgcolor: '#fff',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+              py: 2,
+              px: 6,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              zIndex: 1200,
+            }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 3, pb: 0 }}>
-              <DialogTitle sx={{ p: 0 }}>Add permission - {dialogCategory}</DialogTitle>
-              <IconButton onClick={handleCloseDialog}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-            <DialogContent sx={{ p: 3 }}>
-              <TextField
-                value={addDialogSearch}
-                onChange={e => setAddDialogSearch(e.target.value)}
-                placeholder="Search permissions or subdomains..."
-                size="small"
-                fullWidth
-                sx={{ mb: 2 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
+            <Box sx={{ display: 'flex', gap: '16px' }}>
+              <Button
+                variant="outlined"
+                sx={{
+                  display: 'flex',
+                  minWidth: 60,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: 10,
+                  height: 32,
+                  padding: '7px 12px',
+                  fontWeight: 500,
+                  fontSize: 16,
+                  textTransform: 'none',
+                  background: '#fff',
+                  color: '#111',
+                  border: '1px solid #B0B0B0',
+                  boxShadow: 'none',
+                  gap: 2,
+                  '&:hover': {
+                    background: '#f3e8ff',
+                    border: '1px solid #B0B0B0',
+                  },
                 }}
-              />
-              {dialogCategory && (
-                <Box>
-                  {(() => {
-                    const domain = permissionsData.find(d => d.name === dialogCategory);
-                    if (!domain) return null;
-                    // Group permissions by subdomain
-                    const groupedBySubdomain = domain.permissions.reduce((acc: any, permission: any) => {
-                      const subdomain = permission.subdomain || '-';
-                      if (!acc[subdomain]) acc[subdomain] = [];
-                      acc[subdomain].push(permission);
-                      return acc;
-                    }, {});
-                    // Filter logic
-                    const q = addDialogSearch.trim().toLowerCase();
-                    const filterPermission = (permission: any) =>
-                      permission.name.toLowerCase().includes(q) ||
-                      (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
-                    // For each group, filter permissions
-                    const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
-                      const filteredPerms = (perms as any[]).filter(filterPermission);
-                      if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
-                      return acc;
-                    }, {});
-                    // Remove the auto-expand logic
-                    const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
-                    const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
-                    if (groupedEntries.length === 0 && ungroupedEntries.length === 0) {
-                      return <Typography sx={{ p: 2 }}>No permissions found.</Typography>;
-                    }
-                    return (
-                      <Box>
-                        {/* Grouped permissions first */}
-                        {groupedEntries.map(([subdomain, subPermissions], groupIndex) => {
-                          const expanded = expandedDialogSubdomains[subdomain] || false;
-                          const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
-                          return (
-                            <Box
-                              key={subdomain}
-                              sx={{
-                                mb: 2,
-                                borderRadius: 1,
-                                overflow: 'hidden',
-                                border: expanded ? '1px solid' : 'none',
-                                borderColor: expanded ? 'primary.main' : 'transparent',
-                                boxShadow: expanded ? 2 : 0,
-                                transition: 'border 0.2s, box-shadow 0.2s',
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  p: 2,
-                                  bgcolor: 'background.default',
-                                  borderBottom: '1px solid',
-                                  borderColor: 'divider',
-                                  cursor: 'pointer',
-                                }}
-                                onClick={() => handleDialogSubdomainChevron(subdomain)}
-                              >
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                  <ExpandMoreIcon
-                                    sx={{
-                                      transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                      transition: 'transform 0.2s',
-                                    }}
-                                  />
-                                  <Typography variant="subtitle1">
-                                    {highlightMatch(subdomain, addDialogSearch)}
-                                  </Typography>
-                                  <Chip
-                                    label={`${safeSubPermissions.length} permissions`}
-                                    size="small"
-                                    color="primary"
-                                    variant="outlined"
-                                  />
-                                </Box>
-                              </Box>
-                              <Collapse in={expanded}>
-                                <Box sx={{ p: 2 }}>
-                                  {safeSubPermissions.map((permission: any, index: number) =>
-                                    permission && permission.supportedActions ? (
-                                      <Box
-                                        key={permission.name}
-                                        sx={{
-                                          p: 2,
-                                          mb: 1,
-                                          borderRadius: 1,
-                                          '&:hover': {
-                                            bgcolor: 'action.hover',
-                                          },
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'space-between',
-                                        }}
-                                      >
-                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                          <Switch
-                                            checked={permission.isEnabled}
-                                            onChange={() => {
-                                              setEditDomainPermissions(prev =>
-                                                prev.map(p =>
-                                                  p.permission === permission.permission && p.subdomain === permission.subdomain
-                                                    ? { ...p, isEnabled: !p.isEnabled }
-                                                    : p
-                                                )
-                                              );
-                                            }}
-                                            sx={{ mr: 2 }}
-                                          />
-                                          <Typography variant="body1">
-                                            {highlightMatch(permission.name, addDialogSearch)}
-                                          </Typography>
-                                          {permission.isSensitive && (
-                                            <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
-                                          )}
-                                        </Box>
-                                        {permission.isEnabled &&
-                                          (permission.supportedActions.includes('View') || permission.supportedActions.includes('Propose') || permission.supportedActions.includes('Edit')) && (
-                                            <Box sx={{ mt: 1, ml: 4 }}>
-                                              <ToggleButtonGroup
-                                                value={permission.accessLevel}
-                                                exclusive
-                                                onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map(p =>
-                                                  p.permission === permission.permission && p.subdomain === permission.subdomain
-                                                    ? { ...p, accessLevel: value }
-                                                    : p
-                                                ))}
-                                                size="small"
-                                              >
-                                                <ToggleButton value="View" disabled={!permission.supportedActions.includes('View')}>
-                                                  View
-                                                </ToggleButton>
-                                                <ToggleButton value="Propose" disabled={!permission.supportedActions.includes('Propose')}>
-                                                  Propose
-                                                </ToggleButton>
-                                                <ToggleButton value="Edit" disabled={!permission.supportedActions.includes('Edit')}>
-                                                  Edit
-                                                </ToggleButton>
-                                              </ToggleButtonGroup>
-                                            </Box>
-                                          )}
-                                      </Box>
-                                    ) : null
-                                  )}
-                                </Box>
-                              </Collapse>
-                            </Box>
-                          );
-                        })}
-                        {/* Ungrouped permissions after grouped */}
-                        {ungroupedEntries.map(([subdomain, subPermissions], groupIndex) => {
-                          const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
-                          return safeSubPermissions.map((permission: any, index: number) =>
-                            permission && permission.supportedActions ? (
-                              <Box
-                                key={permission.name}
-                                sx={{
-                                  p: 2,
-                                  mb: 1,
-                                  border: '1px solid',
-                                  borderColor: permission.isEnabled ? 'primary.main' : 'divider',
-                                  borderRadius: 1,
-                                  '&:hover': {
-                                    borderColor: 'primary.main',
-                                    bgcolor: 'action.hover',
-                                  },
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                }}
-                              >
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                  <Switch
-                                    checked={permission.isEnabled}
-                                    onChange={() => {
-                                      setEditDomainPermissions(prev =>
-                                        prev.map(p =>
-                                          p.permission === permission.permission && p.subdomain === permission.subdomain
-                                            ? { ...p, isEnabled: !p.isEnabled }
-                                            : p
-                                        )
-                                      );
-                                    }}
-                                    sx={{ mr: 2 }}
-                                  />
-                                  <Typography variant="body1">
-                                    {highlightMatch(permission.name, addDialogSearch)}
-                                  </Typography>
-                                  {permission.isSensitive && (
-                                    <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
-                                  )}
-                                </Box>
-                                {permission.isEnabled &&
-                                  (permission.supportedActions.includes('View') || permission.supportedActions.includes('Propose') || permission.supportedActions.includes('Edit')) && (
-                                    <Box sx={{ mt: 1, ml: 4 }}>
-                                      <ToggleButtonGroup
-                                        value={permission.accessLevel}
-                                        exclusive
-                                        onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map(p =>
-                                          p.permission === permission.permission && p.subdomain === permission.subdomain
-                                            ? { ...p, accessLevel: value }
-                                            : p
-                                        ))}
-                                        size="small"
-                                      >
-                                        <ToggleButton value="View" disabled={!permission.supportedActions.includes('View')}>
-                                          View
-                                        </ToggleButton>
-                                        <ToggleButton value="Propose" disabled={!permission.supportedActions.includes('Propose')}>
-                                          Propose
-                                        </ToggleButton>
-                                        <ToggleButton value="Edit" disabled={!permission.supportedActions.includes('Edit')}>
-                                          Edit
-                                        </ToggleButton>
-                                      </ToggleButtonGroup>
-                                    </Box>
-                                  )}
-                              </Box>
-                            ) : null
-                          );
-                        })}
-                      </Box>
-                    );
-                  })()}
-                </Box>
-              )}
-            </DialogContent>
-            <DialogActions sx={{ p: 3 }}>
-              <Button onClick={handleCloseDialog} color="inherit">
-                Cancel
+                onClick={() => setStep((s) => Math.max(0, s - 1))}
+              >
+                Back
               </Button>
               <Button
-                onClick={handleDialogSave}
                 variant="contained"
-                disabled={dialogSelectedPermissions.filter(p => p.isEnabled).length === 0}
+                sx={{
+                  display: 'flex',
+                  height: 32,
+                  minWidth: 60,
+                  padding: '7px 12px',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 2,
+                  borderRadius: 10,
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
+                  boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                  color: '#fff',
+                  fontWeight: 500,
+                  fontSize: 16,
+                  textTransform: 'none',
+                  boxShadowColor: 'rgba(176,0,255,0.05)',
+                  '&:hover': {
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                  },
+                }}
+                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
               >
-                Add {dialogSelectedPermissions.filter(p => p.isEnabled).length} Permission{dialogSelectedPermissions.filter(p => p.isEnabled).length !== 1 ? 's' : ''}
+                Next
               </Button>
-            </DialogActions>
-          </Dialog>
+            </Box>
+          </Box>
+          {/* Edit Permission dialog */}
+          {isEditDialogOpen && editDomain && (
+            <Dialog
+              open={isEditDialogOpen}
+              onClose={handleCloseEditDialog}
+              fullWidth
+              maxWidth="xl"
+              PaperProps={{ sx: { minHeight: '90vh', borderRadius: 3, bgcolor: '#fff', boxShadow: 3, p: 0 } }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 4, pb: 0 }}>
+                <DialogTitle sx={{ p: 0, fontWeight: 700, fontSize: 28, color: '#1a1a1a' }}>
+                  Edit Permissions - {editDomain}
+                </DialogTitle>
+                <IconButton onClick={handleCloseEditDialog}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+              <DialogContent sx={{ p: 4 }}>
+                <TextField
+                  value={editDialogSearch}
+                  onChange={e => setEditDialogSearch(e.target.value)}
+                  placeholder="Search permissions or subdomains..."
+                  size="small"
+                  fullWidth
+                  sx={{ mb: 3 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                {permissionsContent}
+              </DialogContent>
+              <DialogActions sx={{ p: 4, borderTop: '1px solid', borderColor: 'divider', bgcolor: '#fafafd' }}>
+                <Button onClick={handleCloseEditDialog} color="inherit" sx={{
+                  borderRadius: 10,
+                  height: 32,
+                  padding: '7px 12px',
+                  fontWeight: 500,
+                  fontSize: 16,
+                  textTransform: 'none',
+                  background: '#fff',
+                  color: '#111',
+                  border: '1px solid #B0B0B0',
+                  boxShadow: 'none',
+                  gap: 2,
+                  '&:hover': {
+                    background: '#f3e8ff',
+                    border: '1px solid #B0B0B0',
+                  },
+                }}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEditDialog}
+                  variant="contained"
+                  disabled={!permissionsChanged(editDomainPermissions, initialEditDomainPermissions)}
+                  sx={{
+                    borderRadius: 10,
+                    height: 32,
+                    padding: '7px 12px',
+                    fontWeight: 500,
+                    fontSize: 16,
+                    textTransform: 'none',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
+                    boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                    color: '#fff',
+                    '&:hover': {
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                    },
+                  }}
+                >
+                  Save
+                </Button>
+              </DialogActions>
+            </Dialog>
+          )}
         </Box>
       );
     }
@@ -999,7 +1215,7 @@ function App() {
 
   const renderBreadcrumbs = () => {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center', width: '100%' }}>
         {steps.map((label, index) => (
           <React.Fragment key={label}>
             <Box
@@ -1007,21 +1223,37 @@ function App() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
-                color: index <= step ? 'primary.main' : 'text.secondary',
+                color: index === step ? 'primary.main' : index < step ? 'text.secondary' : 'text.disabled',
                 fontWeight: index === step ? 600 : 400,
+                cursor: index <= step ? 'pointer' : 'default',
+                textDecoration: 'none',
+                opacity: index > step ? 0.5 : 1,
+                transition: 'color 0.2s',
               }}
+              onClick={() => {
+                if (index <= step) setStep(index);
+              }}
+              component="span"
+              role="button"
+              tabIndex={index <= step ? 0 : -1}
+              aria-disabled={index > step}
             >
-              <Typography variant="body2">{label}</Typography>
+              <Typography variant="body2" sx={{ userSelect: 'none' }}>{label}</Typography>
             </Box>
             {index < steps.length - 1 && (
               <Typography variant="body2" color="text.secondary">
-                /
+                {'>'}
               </Typography>
             )}
           </React.Fragment>
         ))}
       </Box>
     );
+  };
+
+  // Handler to close edit dialog
+  const handleCloseEditDialog = () => {
+    setIsEditDialogOpen(false);
   };
 
   return (
@@ -1119,9 +1351,9 @@ function App() {
           </Box>
         </Drawer>
         {/* Main content */}
-        <Box component="main" sx={{ flexGrow: 1, p: 0 }}>
+        <Box component="main" sx={{ flexGrow: 1, p: 0, bgcolor: '#fff' }}>
           {/* Top bar with close and breadcrumbs */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 4, pt: 3, pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 4, pt: 3, pb: 1, bgcolor: '#fff' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <IconButton size="small" sx={{ mr: 1 }}>
                 <CloseIcon />
@@ -1130,53 +1362,36 @@ function App() {
                 Add permissions set
               </Typography>
             </Box>
-            <Box sx={{ flex: 1, ml: 4 }}>{renderBreadcrumbs()}</Box>
+            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'absolute', left: 0, right: 0, pointerEvents: 'none' }}>
+              <Box sx={{ pointerEvents: 'auto' }}>{renderBreadcrumbs()}</Box>
+            </Box>
             <Box />
           </Box>
           {/* Step content */}
-          <Box sx={{ px: 4, pt: 2 }}>{renderStepContent()}</Box>
-          {/* Navigation */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', px: 4, py: 2 }}>
-            <Button
-              disabled={step === 0}
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-              variant="outlined"
-              sx={{ minWidth: 120, borderRadius: 2, mr: 2 }}
-            >
-              Back
-            </Button>
-            <Button
-              disabled={step === steps.length - 1}
-              onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-              variant="contained"
-              sx={{ minWidth: 120, borderRadius: 2 }}
-            >
-              Next
-            </Button>
-          </Box>
-          {/* Edit Permission dialog */}
-          {isEditDialogOpen && editDomain && (
+          <Box sx={{ px: 4, pt: 2 }}>
             <Dialog
-              open={isEditDialogOpen}
-              onClose={handleCloseEditDialog}
+              open={isDialogOpen}
+              onClose={handleCloseDialog}
               fullWidth
               maxWidth="xl"
-              PaperProps={{ sx: { minHeight: '90vh', borderRadius: 3 } }}
+              PaperProps={{ sx: { minHeight: '90vh', borderRadius: 3, bgcolor: '#fff', boxShadow: 3, p: 0 } }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 3, pb: 0 }}>
-                <DialogTitle sx={{ p: 0 }}>Edit Permissions - {editDomain}</DialogTitle>
-                <IconButton onClick={handleCloseEditDialog}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 4, pb: 0 }}>
+                <DialogTitle sx={{ p: 0, fontWeight: 700, fontSize: 28, color: '#1a1a1a' }}>
+                  Add permission - {dialogCategory}
+                </DialogTitle>
+                <IconButton onClick={handleCloseDialog}>
                   <CloseIcon />
                 </IconButton>
               </Box>
-              <DialogContent sx={{ p: 3 }}>
+              <DialogContent sx={{ p: 4 }}>
                 <TextField
-                  value={editDialogSearch}
-                  onChange={e => setEditDialogSearch(e.target.value)}
+                  value={addDialogSearch}
+                  onChange={e => setAddDialogSearch(e.target.value)}
                   placeholder="Search permissions or subdomains..."
                   size="small"
                   fullWidth
-                  sx={{ mb: 2 }}
+                  sx={{ mb: 3 }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -1185,236 +1400,250 @@ function App() {
                     ),
                   }}
                 />
-                {(() => {
-                  const groupedBySubdomain = editDomainPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
-                    const subdomain = permission.subdomain || '-';
-                    if (!acc[subdomain]) acc[subdomain] = [];
-                    acc[subdomain].push(permission);
-                    return acc;
-                  }, {});
-                  const q = editDialogSearch.trim().toLowerCase();
-                  const filterPermission = (permission: any) =>
-                    permission.permission.toLowerCase().includes(q) ||
-                    (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
-                  const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
-                    const filteredPerms = (perms as any[]).filter(filterPermission);
-                    if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
-                    return acc;
-                  }, {});
-                  const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
-                  const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
-                  if (groupedEntries.length === 0 && ungroupedEntries.length === 0) {
-                    return <Typography sx={{ p: 2 }}>No permissions found.</Typography>;
-                  }
-                  return (
-                    <Box>
-                      {groupedEntries.map(([subdomain, subPermissions], groupIndex) => {
-                        const expanded = editDialogExpandedSubdomains[subdomain] || false;
-                        const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
-                        return (
-                          <Box
-                            key={subdomain}
-                            sx={{
-                              mb: 2,
-                              borderRadius: 1,
-                              overflow: 'hidden',
-                              border: expanded ? '1px solid' : 'none',
-                              borderColor: expanded ? 'primary.main' : 'transparent',
-                              boxShadow: expanded ? 2 : 0,
-                              transition: 'border 0.2s, box-shadow 0.2s',
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                p: 2,
-                                bgcolor: 'background.default',
-                                borderBottom: '1px solid',
-                                borderColor: 'divider',
-                                cursor: 'pointer',
-                              }}
-                              onClick={() => handleEditDialogSubdomainChevron(subdomain)}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <ExpandMoreIcon
-                                  sx={{
-                                    transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                                    transition: 'transform 0.2s',
-                                  }}
-                                />
-                                <Typography variant="subtitle1">
-                                  {highlightMatch(subdomain, editDialogSearch)}
-                                </Typography>
-                                <Chip
-                                  label={`${safeSubPermissions.length} permissions`}
-                                  size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                />
-                              </Box>
-                            </Box>
-                            <Collapse in={expanded}>
-                              <Box sx={{ p: 2 }}>
-                                {safeSubPermissions.map((permission: any, index: number) =>
-                                  permission && permission.supportedActions ? (
-                                    <Box
-                                      key={permission.name}
-                                      sx={{
-                                        p: 2,
-                                        mb: 1,
-                                        borderRadius: 1,
-                                        '&:hover': {
-                                          bgcolor: 'action.hover',
-                                        },
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                      }}
-                                    >
-                                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                        <Switch
-                                          checked={permission.isEnabled}
-                                          onChange={() => {
-                                            setEditDomainPermissions(prev =>
-                                              prev.map(p =>
-                                                p.permission === permission.permission && p.subdomain === permission.subdomain
-                                                  ? { ...p, isEnabled: !p.isEnabled }
-                                                  : p
-                                              )
-                                            );
+                {dialogCategory && (
+                  <Box>
+                    {(() => {
+                      const domain = permissionsData.find(d => d.name === dialogCategory);
+                      if (!domain) return null;
+                      // Group permissions by subdomain
+                      const groupedBySubdomain = domain.permissions.reduce((acc: any, permission: any) => {
+                        const subdomain = permission.subdomain || '-';
+                        if (!acc[subdomain]) acc[subdomain] = [];
+                        acc[subdomain].push(permission);
+                        return acc;
+                      }, {});
+                      // Filter logic
+                      const q = addDialogSearch.trim().toLowerCase();
+                      const filterPermission = (permission: any) =>
+                        permission.name.toLowerCase().includes(q) ||
+                        (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
+                      // For each group, filter permissions
+                      const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
+                        const filteredPerms = (perms as any[]).filter(filterPermission);
+                        if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
+                        return acc;
+                      }, {});
+                      const groupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain !== '-');
+                      const ungroupedEntries = Object.entries(filteredGrouped).filter(([subdomain]) => subdomain === '-');
+                      if (groupedEntries.length === 0 && ungroupedEntries.length === 0) {
+                        return <Typography sx={{ p: 2 }}>No permissions found.</Typography>;
+                      }
+                      return (
+                        <Box>
+                          {/* Grouped permissions first */}
+                          {groupedEntries.map(([subdomain, subPermissions], groupIndex) => {
+                            const expanded = expandedDialogSubdomains[subdomain] || false;
+                            const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
+                            return (
+                              <Box
+                                key={subdomain}
+                                sx={{
+                                  mb: 2,
+                                  borderRadius: 1,
+                                  overflow: 'hidden',
+                                  border: expanded ? '1px solid' : 'none',
+                                  borderColor: expanded ? 'primary.main' : 'transparent',
+                                  boxShadow: expanded ? 2 : 0,
+                                  transition: 'border 0.2s, box-shadow 0.2s',
+                                }}
+                              >
+                                <Box
+                                  sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, cursor: 'pointer' }}
+                                  onClick={() => handleDialogSubdomainChevron(subdomain)}
+                                >
+                                  <ExpandMoreIcon
+                                    sx={{
+                                      transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                      transition: 'transform 0.2s',
+                                    }}
+                                  />
+                                  <Typography variant="subtitle1">
+                                    {highlightMatch(subdomain, addDialogSearch)}
+                                  </Typography>
+                                  <Chip
+                                    label={`${safeSubPermissions.length} permissions`}
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                  />
+                                </Box>
+                                {expanded && (
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{
+                                      borderRadius: 10,
+                                      fontWeight: 500,
+                                      fontSize: 14,
+                                      textTransform: 'none',
+                                      ml: 2,
+                                      minWidth: 110,
+                                      border: '1px solid #B0B0B0',
+                                      color: '#7c3aed',
+                                      background: '#fff',
+                                      '&:hover': {
+                                        background: '#f3e8ff',
+                                        border: '1px solid #B0B0B0',
+                                      },
+                                    }}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      const allEnabled = safeSubPermissions.every((permission: any) =>
+                                        dialogSelectedPermissions.find(p => p.permission === permission.name && p.subdomain === permission.subdomain && p.isEnabled)
+                                      );
+                                      setDialogSelectedPermissions(prev =>
+                                        prev.map(p =>
+                                          p.subdomain === subdomain
+                                            ? { ...p, isEnabled: !allEnabled }
+                                            : p
+                                        )
+                                      );
+                                    }}
+                                  >
+                                    {safeSubPermissions.every((permission: any) =>
+                                      dialogSelectedPermissions.find(p => p.permission === permission.name && p.subdomain === permission.subdomain && p.isEnabled)
+                                    ) ? 'Disable all' : 'Enable all'}
+                                  </Button>
+                                )}
+                                <Collapse in={expanded}>
+                                  <Box sx={{ p: 2 }}>
+                                    {safeSubPermissions.map((permission: any, index: number) =>
+                                      permission && permission.supportedActions ? (
+                                        <Box
+                                          key={permission.name}
+                                          sx={{
+                                            p: 2,
+                                            mb: 1,
+                                            borderRadius: 1,
+                                            '&:hover': {
+                                              bgcolor: 'action.hover',
+                                            },
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
                                           }}
-                                          sx={{ mr: 2 }}
-                                        />
-                                        <Typography variant="body1">
-                                          {highlightMatch(permission.name, editDialogSearch)}
-                                        </Typography>
-                                        {permission.isSensitive && (
-                                          <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
-                                        )}
-                                      </Box>
-                                      {permission.isEnabled &&
-                                        (permission.supportedActions.includes('View') || permission.supportedActions.includes('Propose') || permission.supportedActions.includes('Edit')) && (
-                                          <Box sx={{ mt: 1, ml: 4 }}>
-                                            <ToggleButtonGroup
-                                              value={permission.accessLevel}
-                                              exclusive
-                                              onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map(p =>
-                                                p.permission === permission.permission && p.subdomain === permission.subdomain
-                                                  ? { ...p, accessLevel: value }
-                                                  : p
-                                              ))}
-                                              size="small"
-                                            >
-                                              <ToggleButton value="View" disabled={!permission.supportedActions.includes('View')}>
-                                                View
-                                              </ToggleButton>
-                                              <ToggleButton value="Propose" disabled={!permission.supportedActions.includes('Propose')}>
-                                                Propose
-                                              </ToggleButton>
-                                              <ToggleButton value="Edit" disabled={!permission.supportedActions.includes('Edit')}>
-                                                Edit
-                                              </ToggleButton>
-                                            </ToggleButtonGroup>
+                                        >
+                                          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, justifyContent: 'space-between' }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                              <Switch
+                                                checked={permission.isEnabled}
+                                                onChange={() => handleDialogPermissionToggle(permission, permission.subdomain || '-')}
+                                                sx={{ mr: 2 }}
+                                              />
+                                              <Typography variant="body1">{highlightMatch(permission.name, addDialogSearch)}</Typography>
+                                            </Box>
                                           </Box>
-                                        )}
-                                    </Box>
-                                  ) : null
-                                )}
-                              </Box>
-                            </Collapse>
-                          </Box>
-                        );
-                      })}
-                      {ungroupedEntries.map(([subdomain, subPermissions], groupIndex) => {
-                        const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
-                        return safeSubPermissions.map((permission: any, index: number) =>
-                          permission && permission.supportedActions ? (
-                            <Box
-                              key={permission.name}
-                              sx={{
-                                p: 2,
-                                mb: 1,
-                                border: '1px solid',
-                                borderColor: permission.isEnabled ? 'primary.main' : 'divider',
-                                borderRadius: 1,
-                                '&:hover': {
-                                  borderColor: 'primary.main',
-                                  bgcolor: 'action.hover',
-                                },
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <Switch
-                                  checked={permission.isEnabled}
-                                  onChange={() => {
-                                    setEditDomainPermissions(prev =>
-                                      prev.map(p =>
-                                        p.permission === permission.permission && p.subdomain === permission.subdomain
-                                          ? { ...p, isEnabled: !p.isEnabled }
-                                          : p
-                                      )
-                                    );
-                                  }}
-                                  sx={{ mr: 2 }}
-                                />
-                                <Typography variant="body1">
-                                  {highlightMatch(permission.name, editDialogSearch)}
-                                </Typography>
-                                {permission.isSensitive && (
-                                  <Chip label="Sensitive" size="small" color="error" sx={{ ml: 1 }} />
-                                )}
-                              </Box>
-                              {permission.isEnabled &&
-                                (permission.supportedActions.includes('View') || permission.supportedActions.includes('Propose') || permission.supportedActions.includes('Edit')) && (
-                                  <Box sx={{ mt: 1, ml: 4 }}>
-                                    <ToggleButtonGroup
-                                      value={permission.accessLevel}
-                                      exclusive
-                                      onChange={(_, value) => value && setEditDomainPermissions(prev => prev.map(p =>
-                                        p.permission === permission.permission && p.subdomain === permission.subdomain
-                                          ? { ...p, accessLevel: value }
-                                          : p
-                                      ))}
-                                      size="small"
-                                    >
-                                      <ToggleButton value="View" disabled={!permission.supportedActions.includes('View')}>
-                                        View
-                                      </ToggleButton>
-                                      <ToggleButton value="Propose" disabled={!permission.supportedActions.includes('Propose')}>
-                                        Propose
-                                      </ToggleButton>
-                                      <ToggleButton value="Edit" disabled={!permission.supportedActions.includes('Edit')}>
-                                        Edit
-                                      </ToggleButton>
-                                    </ToggleButtonGroup>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            {permission.isSensitive && (
+                                              <Chip label="Sensitive" size="small" color="error" />
+                                            )}
+                                            {permission.noScopeLimit && (
+                                              <Chip label="No scope limit" size="small" color="info" />
+                                            )}
+                                          </Box>
+                                        </Box>
+                                      ) : null
+                                    )}
                                   </Box>
-                                )}
-                            </Box>
-                          ) : null
-                        );
-                      })}
-                    </Box>
-                  );
-                })()}
+                                </Collapse>
+                              </Box>
+                            );
+                          })}
+                          {/* Ungrouped permissions after grouped */}
+                          {ungroupedEntries.map(([subdomain, subPermissions], groupIndex) => {
+                            const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
+                            return safeSubPermissions.map((permission: any) =>
+                              permission && permission.supportedActions ? (
+                                <Box
+                                  key={permission.name}
+                                  sx={{
+                                    p: 2,
+                                    mb: 1,
+                                    border: '1px solid',
+                                    borderColor: dialogSelectedPermissions.find(p => p.permission === permission.name && p.subdomain === permission.subdomain)?.isEnabled
+                                      ? 'primary.main'
+                                      : 'divider',
+                                    borderRadius: 1,
+                                    '&:hover': {
+                                      borderColor: 'primary.main',
+                                      bgcolor: 'action.hover',
+                                    },
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                  }}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Switch
+                                      checked={dialogSelectedPermissions.find(p => p.permission === permission.name && p.subdomain === permission.subdomain)?.isEnabled || false}
+                                      onChange={() => handleDialogPermissionToggle(permission, permission.subdomain || '-')}
+                                      sx={{ mr: 2 }}
+                                    />
+                                    <Typography variant="body1">{highlightMatch(permission.name, addDialogSearch)}</Typography>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {permission.isSensitive && (
+                                      <Chip label="Sensitive" size="small" color="error" />
+                                    )}
+                                    {permission.noScopeLimit && (
+                                      <Chip label="No scope limit" size="small" color="info" />
+                                    )}
+                                  </Box>
+                                </Box>
+                              ) : null
+                            );
+                          })}
+                        </Box>
+                      );
+                    })()}
+                  </Box>
+                )}
               </DialogContent>
-              <DialogActions sx={{ p: 3 }}>
-                <Button onClick={handleCloseEditDialog} color="inherit">
+              <DialogActions sx={{ p: 4, borderTop: '1px solid', borderColor: 'divider', bgcolor: '#fafafd' }}>
+                <Button onClick={handleCloseDialog} color="inherit" sx={{
+                  borderRadius: 10,
+                  height: 32,
+                  padding: '7px 12px',
+                  fontWeight: 500,
+                  fontSize: 16,
+                  textTransform: 'none',
+                  background: '#fff',
+                  color: '#111',
+                  border: '1px solid #B0B0B0',
+                  boxShadow: 'none',
+                  gap: 2,
+                  '&:hover': {
+                    background: '#f3e8ff',
+                    border: '1px solid #B0B0B0',
+                  },
+                }}>
                   Cancel
                 </Button>
                 <Button
-                  onClick={handleSaveEditDialog}
+                  onClick={handleDialogSave}
                   variant="contained"
+                  disabled={dialogSelectedPermissions.filter(p => p.isEnabled).length === 0}
+                  sx={{
+                    borderRadius: 10,
+                    height: 32,
+                    padding: '7px 12px',
+                    fontWeight: 500,
+                    fontSize: 16,
+                    textTransform: 'none',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
+                    boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                    color: '#fff',
+                    '&:hover': {
+                      background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                    },
+                  }}
                 >
-                  Save Changes
+                  Add {dialogSelectedPermissions.filter(p => p.isEnabled).length} Permission{dialogSelectedPermissions.filter(p => p.isEnabled).length !== 1 ? 's' : ''}
                 </Button>
               </DialogActions>
             </Dialog>
-          )}
+            {renderStepContent()}
+          </Box>
         </Box>
       </Box>
     </ThemeProvider>
