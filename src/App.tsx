@@ -883,23 +883,18 @@ function App() {
               <Button
                 variant="contained"
                 sx={{
-                  display: 'flex',
-                  height: 32,
-                  minWidth: 60,
-                  padding: '7px 12px',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: 2,
-                  borderRadius: 10,
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
-                  boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                  borderRadius: 8,
+                  background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
                   color: '#fff',
-                  fontWeight: 500,
+                  fontWeight: 600,
                   fontSize: 16,
+                  minWidth: 60,
+                  height: 32,
+                  boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
                   textTransform: 'none',
-                  boxShadowColor: 'rgba(176,0,255,0.05)',
                   '&:hover': {
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                    background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
+                    boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
                   },
                 }}
                 onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
@@ -919,25 +914,19 @@ function App() {
             <Typography variant="h4" sx={{ fontWeight: 700, textAlign: 'left' }}>Permissions</Typography>
             <Button
               variant="contained"
-              color="primary"
               sx={{
-                display: 'flex',
-                height: 32,
-                minWidth: 60,
-                padding: '7px 12px',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: 2,
-                borderRadius: 10,
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
-                boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                borderRadius: 8,
+                background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
                 color: '#fff',
-                fontWeight: 500,
+                fontWeight: 600,
                 fontSize: 16,
+                minWidth: 60,
+                height: 32,
+                boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
                 textTransform: 'none',
-                boxShadowColor: 'rgba(176,0,255,0.05)',
                 '&:hover': {
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                  background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
+                  boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
                 },
               }}
               endIcon={<ExpandMoreIcon />}
@@ -1081,23 +1070,18 @@ function App() {
               <Button
                 variant="contained"
                 sx={{
-                  display: 'flex',
-                  height: 32,
-                  minWidth: 60,
-                  padding: '7px 12px',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: 2,
-                  borderRadius: 10,
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
-                  boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                  borderRadius: 8,
+                  background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
                   color: '#fff',
-                  fontWeight: 500,
+                  fontWeight: 600,
                   fontSize: 16,
+                  minWidth: 60,
+                  height: 32,
+                  boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
                   textTransform: 'none',
-                  boxShadowColor: 'rgba(176,0,255,0.05)',
                   '&:hover': {
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                    background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
+                    boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
                   },
                 }}
                 onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
@@ -1817,17 +1801,18 @@ function App() {
                   variant="contained"
                   disabled={dialogSelectedPermissions.filter(p => p.isEnabled).length === 0}
                   sx={{
-                    borderRadius: 10,
-                    height: 32,
-                    padding: '7px 12px',
-                    fontWeight: 500,
-                    fontSize: 16,
-                    textTransform: 'none',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
-                    boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
+                    borderRadius: 8,
+                    background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
                     color: '#fff',
+                    fontWeight: 600,
+                    fontSize: 16,
+                    minWidth: 60,
+                    height: 32,
+                    boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
+                    textTransform: 'none',
                     '&:hover': {
-                      background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
+                      background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
+                      boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
                     },
                   }}
                 >
