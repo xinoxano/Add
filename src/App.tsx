@@ -52,6 +52,7 @@ import Popover from '@mui/material/Popover';
 import { permissionsData } from './data/permissionsData';
 import { SelectedPermission } from './components/PermissionsManager';
 import Divider from '@mui/material/Divider';
+import ClearIcon from '@mui/icons-material/Clear';
 
 const steps = ['Get started', 'Permissions', 'Assignees', 'Confirm'];
 const drawerWidth = 240;
@@ -217,15 +218,16 @@ function App() {
         collapsedState[subdomain] = false; // All groups start collapsed
       });
       setExpandedDialogSubdomains(collapsedState);
-      setAddDialogSearch('');
+      setAddDialogSearch(categorySearch); // <-- Set dialog search to popover search
     } else {
       setDialogSelectedPermissions([]);
       setInitialDialogSelectedPermissions([]);
       setExpandedDialogSubdomains({});
-      setAddDialogSearch('');
+      setAddDialogSearch(categorySearch); // <-- Set dialog search to popover search
     }
     setCategoryPopoverAnchor(null);
     setIsDialogOpen(true);
+    setCategorySearch(''); // <-- Clear popover search after opening dialog
   };
   const handleTempPermissionToggle = (permission: any) => {
     setTempSelectedPermissions(prev => {
@@ -967,6 +969,15 @@ function App() {
                       <SearchIcon fontSize="small" />
                     </InputAdornment>
                   ),
+                  endAdornment: (
+                    categorySearch && (
+                      <InputAdornment position="end">
+                        <IconButton size="small" onClick={() => setCategorySearch('')} aria-label="Clear search">
+                          <ClearIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  ),
                 }}
                 autoFocus
                 onClick={e => e.stopPropagation()}
@@ -1484,6 +1495,15 @@ function App() {
                       <InputAdornment position="start">
                         <SearchIcon fontSize="small" />
                       </InputAdornment>
+                    ),
+                    endAdornment: (
+                      addDialogSearch && (
+                        <InputAdornment position="end">
+                          <IconButton size="small" onClick={() => setAddDialogSearch('')} aria-label="Clear search">
+                            <ClearIcon fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      )
                     ),
                   }}
                 />
