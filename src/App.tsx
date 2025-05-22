@@ -53,6 +53,7 @@ import { permissionsData } from './data/permissionsData';
 import { SelectedPermission } from './components/PermissionsManager';
 import Divider from '@mui/material/Divider';
 import ClearIcon from '@mui/icons-material/Clear';
+import { ChevronDownIcon } from '@heroicons/react/20/solid';
 
 const steps = ['Get started', 'Permissions', 'Assignees', 'Confirm'];
 const drawerWidth = 240;
@@ -507,15 +508,15 @@ function App() {
 
   // Grouping/filtering logic and permissionsContent must be inside the renderStepContent or App function so all variables are in scope.
   const groupedBySubdomain = editDomainPermissions.reduce((acc: Record<string, typeof editDomainPermissions>, permission) => {
-    const subdomain = permission.subdomain || '-';
-    if (!acc[subdomain]) acc[subdomain] = [];
-    acc[subdomain].push(permission);
-    return acc;
-  }, {});
-  const q = editDialogSearch.trim().toLowerCase();
-  const filterPermission = (permission: any) =>
-    permission.permission.toLowerCase().includes(q) ||
-    (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
+      const subdomain = permission.subdomain || '-';
+      if (!acc[subdomain]) acc[subdomain] = [];
+      acc[subdomain].push(permission);
+      return acc;
+    }, {});
+    const q = editDialogSearch.trim().toLowerCase();
+    const filterPermission = (permission: any) =>
+      permission.permission.toLowerCase().includes(q) ||
+      (permission.subdomain && permission.subdomain.toLowerCase().includes(q));
   const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
     const filteredPerms = (perms as any[]).filter(filterPermission);
     if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
@@ -788,51 +789,51 @@ function App() {
     if (step === 0) {
       return (
         <Box sx={{ p: 0, maxWidth: '100vw', minHeight: 'calc(100vh - 80px)', bgcolor: '#fff' }}>
-          <Box sx={{ bgcolor: '#fff', borderRadius: 2, p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-              Get started
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Give a name, a default data scope and general description
-            </Typography>
-            <Box component="form" noValidate autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <TextField
-                label="Name"
-                placeholder="Enter a unique name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                fullWidth
-                variant="outlined"
-                size="medium"
-              />
-              <TextField
-                select
-                label="Scope access"
-                value={scope}
-                onChange={e => setScope(e.target.value)}
-                fullWidth
-                variant="outlined"
-                size="medium"
-              >
-                {scopeOptions.map(option => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Description"
-                placeholder="A summary of the type of people that should be assigned to this permissions set, their tasks and access rights."
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                fullWidth
-                multiline
-                minRows={3}
-                variant="outlined"
-                size="medium"
-                inputProps={{ maxLength: 500 }}
-                helperText={`${description.length}/500 characters`}
-              />
+        <Box sx={{ bgcolor: '#fff', borderRadius: 2, p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
+            Get started
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Give a name, a default data scope and general description
+          </Typography>
+          <Box component="form" noValidate autoComplete="off" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              label="Name"
+              placeholder="Enter a unique name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              fullWidth
+              variant="outlined"
+              size="medium"
+            />
+            <TextField
+              select
+              label="Scope access"
+              value={scope}
+              onChange={e => setScope(e.target.value)}
+              fullWidth
+              variant="outlined"
+              size="medium"
+            >
+              {scopeOptions.map(option => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Description"
+              placeholder="A summary of the type of people that should be assigned to this permissions set, their tasks and access rights."
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+              variant="outlined"
+              size="medium"
+              inputProps={{ maxLength: 500 }}
+              helperText={`${description.length}/500 characters`}
+            />
             </Box>
           </Box>
           <Box
@@ -853,54 +854,20 @@ function App() {
             }}
           >
             <Box sx={{ display: 'flex', gap: '16px' }}>
-              <Button
-                variant="outlined"
-                sx={{
-                  display: 'flex',
-                  minWidth: 60,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderRadius: 10,
-                  height: 32,
-                  padding: '7px 12px',
-                  fontWeight: 500,
-                  fontSize: 16,
-                  textTransform: 'none',
-                  background: '#fff',
-                  color: '#111',
-                  border: '1px solid #B0B0B0',
-                  boxShadow: 'none',
-                  gap: 2,
-                  '&:hover': {
-                    background: '#f3e8ff',
-                    border: '1px solid #B0B0B0',
-                  },
-                }}
+              <button
+                type="button"
+                className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-[#202020] bg-white flex items-center justify-center shadow-[0_0_0.5px_#2020200F,0_0.5px_2.5px_#20202033] transition focus:outline-none"
                 onClick={() => setStep((s) => Math.max(0, s - 1))}
               >
                 Back
-              </Button>
-              <Button
-                variant="contained"
-                sx={{
-                  borderRadius: 8,
-                  background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: 16,
-                  minWidth: 60,
-                  height: 32,
-                  boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
-                  textTransform: 'none',
-                  '&:hover': {
-                    background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
-                    boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
-                  },
-                }}
+              </button>
+              <button
+                type="button"
+                className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-white bg-gradient-to-b from-[#A533CC] to-[#B16CEA] shadow-sm flex items-center justify-center transition hover:from-[#9333ea] hover:to-[#B16CEA] focus:outline-none"
                 onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
               >
                 Next
-              </Button>
+              </button>
             </Box>
           </Box>
         </Box>
@@ -912,29 +879,15 @@ function App() {
         <Box sx={{ p: 0, maxWidth: '100vw', minHeight: 'calc(100vh - 80px)', bgcolor: '#fff' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 4, pt: 4, pb: 2 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, textAlign: 'left' }}>Permissions</Typography>
-            <Button
-              variant="contained"
-              sx={{
-                borderRadius: 8,
-                background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: 16,
-                minWidth: 60,
-                height: 32,
-                boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
-                textTransform: 'none',
-                '&:hover': {
-                  background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
-                  boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
-                },
-              }}
-              endIcon={<ExpandMoreIcon />}
+            <button
+              type="button"
+              className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-white bg-gradient-to-b from-[#A533CC] to-[#B16CEA] shadow-sm flex items-center justify-center transition hover:from-[#9333ea] hover:to-[#B16CEA] focus:outline-none"
               onClick={handleOpenCategoryPopover}
               disabled={isDialogOpen}
             >
               Add permissions
-            </Button>
+              <ChevronDownIcon className="w-4 h-4 ml-2" />
+            </button>
           </Box>
           <Popover
             open={Boolean(categoryPopoverAnchor)}
@@ -1011,15 +964,15 @@ function App() {
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>Permissions will be listed here.</Typography>
               </Box>
             )}
-            {Array.from(new Set(permissions.map(p => p.domain))).map(domain => (
-              <Box
-                key={domain}
-                onClick={() => handleOpenEditDomain(domain)}
+          {Array.from(new Set(permissions.map(p => p.domain))).map(domain => (
+            <Box
+              key={domain}
+              onClick={() => handleOpenEditDomain(domain)}
                 sx={{ cursor: 'pointer', p: 2, mb: 2, border: '1px solid', borderRadius: 2, bgcolor: '#fafafd', '&:hover': { borderColor: 'primary.main', boxShadow: 1 } }}
-              >
-                <Typography variant="h6">{domain}</Typography>
-              </Box>
-            ))}
+            >
+              <Typography variant="h6">{domain}</Typography>
+            </Box>
+          ))}
           </Box>
           {/* Footer */}
           <Box
@@ -1040,63 +993,29 @@ function App() {
             }}
           >
             <Box sx={{ display: 'flex', gap: '16px' }}>
-              <Button
-                variant="outlined"
-                sx={{
-                  display: 'flex',
-                  minWidth: 60,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderRadius: 10,
-                  height: 32,
-                  padding: '7px 12px',
-                  fontWeight: 500,
-                  fontSize: 16,
-                  textTransform: 'none',
-                  background: '#fff',
-                  color: '#111',
-                  border: '1px solid #B0B0B0',
-                  boxShadow: 'none',
-                  gap: 2,
-                  '&:hover': {
-                    background: '#f3e8ff',
-                    border: '1px solid #B0B0B0',
-                  },
-                }}
+              <button
+                type="button"
+                className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-[#202020] bg-white flex items-center justify-center shadow-[0_0_0.5px_#2020200F,0_0.5px_2.5px_#20202033] transition focus:outline-none"
                 onClick={() => setStep((s) => Math.max(0, s - 1))}
               >
                 Back
-              </Button>
-              <Button
-                variant="contained"
-                sx={{
-                  borderRadius: 8,
-                  background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
-                  color: '#fff',
-                  fontWeight: 600,
-                  fontSize: 16,
-                  minWidth: 60,
-                  height: 32,
-                  boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
-                  textTransform: 'none',
-                  '&:hover': {
-                    background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
-                    boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
-                  },
-                }}
+              </button>
+              <button
+                type="button"
+                className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-white bg-gradient-to-b from-[#A533CC] to-[#B16CEA] shadow-sm flex items-center justify-center transition hover:from-[#9333ea] hover:to-[#B16CEA] focus:outline-none"
                 onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
               >
                 Next
-              </Button>
+              </button>
             </Box>
           </Box>
           {/* Edit Permission dialog */}
           {isEditDialogOpen && editDomain && (
-            <Dialog
+          <Dialog
               open={isEditDialogOpen}
               onClose={handleCloseEditDialog}
-              fullWidth
-              maxWidth="xl"
+            fullWidth
+            maxWidth="xl"
               PaperProps={{ sx: { minHeight: '90vh', borderRadius: 3, bgcolor: '#fff', boxShadow: 3, p: 0 } }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 4, pb: 0 }}>
@@ -1104,70 +1023,45 @@ function App() {
                   Edit Permissions - {editDomain}
                 </DialogTitle>
                 <IconButton onClick={handleCloseEditDialog}>
-                  <CloseIcon />
-                </IconButton>
-              </Box>
+                <CloseIcon />
+              </IconButton>
+            </Box>
               <DialogContent sx={{ p: 4 }}>
-                <TextField
+              <TextField
                   value={editDialogSearch}
                   onChange={e => setEditDialogSearch(e.target.value)}
-                  placeholder="Search permissions or subdomains..."
-                  size="small"
-                  fullWidth
+                placeholder="Search permissions or subdomains..."
+                size="small"
+                fullWidth
                   sx={{ mb: 3 }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
                 {permissionsContent}
               </DialogContent>
               <DialogActions sx={{ p: 4, borderTop: '1px solid', borderColor: 'divider', bgcolor: '#fafafd' }}>
-                <Button onClick={handleCloseEditDialog} color="inherit" sx={{
-                  borderRadius: 10,
-                  height: 32,
-                  padding: '7px 12px',
-                  fontWeight: 500,
-                  fontSize: 16,
-                  textTransform: 'none',
-                  background: '#fff',
-                  color: '#111',
-                  border: '1px solid #B0B0B0',
-                  boxShadow: 'none',
-                  gap: 2,
-                  '&:hover': {
-                    background: '#f3e8ff',
-                    border: '1px solid #B0B0B0',
-                  },
-                }}>
+                <button
+                  type="button"
+                  className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-[#202020] bg-white flex items-center justify-center shadow-[0_0_0.5px_#2020200F,0_0.5px_2.5px_#20202033] transition focus:outline-none"
+                  onClick={handleCloseEditDialog}
+                >
                   Cancel
-                </Button>
-                <Button
+                </button>
+                <button
+                  type="button"
+                  className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-white bg-gradient-to-b from-[#A533CC] to-[#B16CEA] shadow-sm flex items-center justify-center transition hover:from-[#9333ea] hover:to-[#B16CEA] focus:outline-none"
                   onClick={handleSaveEditDialog}
-                  variant="contained"
                   disabled={!permissionsChanged(editDomainPermissions, initialEditDomainPermissions)}
-                  sx={{
-                    borderRadius: 10,
-                    height: 32,
-                    padding: '7px 12px',
-                    fontWeight: 500,
-                    fontSize: 16,
-                    textTransform: 'none',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%), #A533CC',
-                    boxShadow: '0px 1px 2px 0px rgba(176,0,255,0.05)',
-                    color: '#fff',
-                    '&:hover': {
-                      background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.00) 100%), #9333ea',
-                    },
-                  }}
                 >
                   Save
-                </Button>
-              </DialogActions>
-            </Dialog>
+                </button>
+            </DialogActions>
+          </Dialog>
           )}
         </Box>
       );
@@ -1667,8 +1561,8 @@ function App() {
                                                 setDialogSelectedPermissions(prev =>
                                                   prev.map(p =>
                                                     p.permission === permission.name && p.subdomain === permission.subdomain
-                                                      ? { ...p, accessLevel: value }
-                                                      : p
+                                                  ? { ...p, accessLevel: value }
+                                                  : p
                                                   )
                                                 );
                                               }}
@@ -1681,7 +1575,7 @@ function App() {
                                             </ToggleButtonGroup>
                                           );
                                       })()}
-                                    </Box>
+                                          </Box>
                                   ) : null;
                                 })}
                               </Box>
@@ -1754,8 +1648,8 @@ function App() {
                                         setDialogSelectedPermissions(prev =>
                                           prev.map(p =>
                                             p.permission === permission.name && p.subdomain === permission.subdomain
-                                              ? { ...p, accessLevel: value }
-                                              : p
+                                          ? { ...p, accessLevel: value }
+                                          : p
                                           )
                                         );
                                       }}
@@ -1766,7 +1660,7 @@ function App() {
                                       <ToggleButton value="Propose" disabled={!normalizedActions.includes('Propose')}>Propose</ToggleButton>
                                       <ToggleButton value="Edit" disabled={!normalizedActions.includes('Edit')}>Edit</ToggleButton>
                                     </ToggleButtonGroup>
-                                  );
+                        );
                               })()}
                             </Box>
                           ) : null;
@@ -1777,47 +1671,21 @@ function App() {
                 })()}
               </DialogContent>
               <DialogActions sx={{ p: 4, borderTop: '1px solid', borderColor: 'divider', bgcolor: '#fafafd' }}>
-                <Button onClick={handleCloseDialog} color="inherit" sx={{
-                  borderRadius: 10,
-                  height: 32,
-                  padding: '7px 12px',
-                  fontWeight: 500,
-                  fontSize: 16,
-                  textTransform: 'none',
-                  background: '#fff',
-                  color: '#111',
-                  border: '1px solid #B0B0B0',
-                  boxShadow: 'none',
-                  gap: 2,
-                  '&:hover': {
-                    background: '#f3e8ff',
-                    border: '1px solid #B0B0B0',
-                  },
-                }}>
+                <button
+                  type="button"
+                  className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-[#202020] bg-white flex items-center justify-center shadow-[0_0_0.5px_#2020200F,0_0.5px_2.5px_#20202033] transition focus:outline-none"
+                  onClick={handleCloseDialog}
+                >
                   Cancel
-                </Button>
-                <Button
+                </button>
+                <button
+                  type="button"
+                  className="min-w-[60px] h-8 py-[7px] px-3 rounded-[10px] text-sm font-medium text-white bg-gradient-to-b from-[#A533CC] to-[#B16CEA] shadow-sm flex items-center justify-center transition hover:from-[#9333ea] hover:to-[#B16CEA] focus:outline-none"
                   onClick={handleDialogSave}
-                  variant="contained"
                   disabled={dialogSelectedPermissions.filter(p => p.isEnabled).length === 0}
-                  sx={{
-                    borderRadius: 8,
-                    background: 'linear-gradient(180deg, #B16CEA 0%, #FF5E69 100%)',
-                    color: '#fff',
-                    fontWeight: 600,
-                    fontSize: 16,
-                    minWidth: 60,
-                    height: 32,
-                    boxShadow: '0 2px 8px 0 rgba(176,0,255,0.10)',
-                    textTransform: 'none',
-                    '&:hover': {
-                      background: 'linear-gradient(180deg, #A259C1 0%, #FF5E69 100%)',
-                      boxShadow: '0 4px 12px 0 rgba(176,0,255,0.15)',
-                    },
-                  }}
                 >
                   Add {dialogSelectedPermissions.filter(p => p.isEnabled).length} Permission{dialogSelectedPermissions.filter(p => p.isEnabled).length !== 1 ? 's' : ''}
-                </Button>
+                </button>
               </DialogActions>
             </Dialog>
             {renderStepContent()}
