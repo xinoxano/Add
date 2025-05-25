@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AccessLevel } from './types/permissions';
 import { permissionsData } from './data/permissionsData';
 import { SelectedPermission } from './components/PermissionsManager';
@@ -121,6 +121,11 @@ function App() {
   const [lastEditDialogSearch, setLastEditDialogSearch] = useState('');
   const [initialDialogSelectedPermissions, setInitialDialogSelectedPermissions] = useState<SelectedPermission[]>([]);
   const [initialEditDomainPermissions, setInitialEditDomainPermissions] = useState<SelectedPermission[]>([]);
+
+  // Ref for popover and button
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
 
   const handleAccessLevelChange = (index: number, level: AccessLevel) => {
     setPermissions(prev =>
@@ -788,10 +793,10 @@ function App() {
             <div className="flex items-center justify-between px-8 py-4">
               <h2 className="text-2xl font-bold text-gray-900">Permissions</h2>
               <button
+                ref={buttonRef}
                 type="button"
-                className="flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+                className="flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 onClick={handleOpenCategoryPopover}
-                disabled={isDialogOpen}
               >
                 Add permissions
                 <ChevronDownIcon className="ml-2 h-4 w-4" />
@@ -800,7 +805,11 @@ function App() {
 
             {/* Category Popover */}
             {Boolean(categoryPopoverAnchor) && (
-              <div className="absolute z-50 mt-2 w-80 rounded-lg border border-gray-200 bg-white shadow-lg">
+              <div
+                ref={popoverRef}
+                className="w-80 rounded-lg border border-gray-200 bg-white shadow-lg"
+                style={popoverStyle}
+              >
                 <div className="p-4">
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -810,7 +819,7 @@ function App() {
                       type="text"
                       value={categorySearch}
                       onChange={e => setCategorySearch(e.target.value)}
-                      placeholder="Search domains, subdomains, permissions..."
+                      placeholder="Search..."
                       className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                       autoFocus
                       onClick={e => e.stopPropagation()}
@@ -826,7 +835,7 @@ function App() {
                     )}
                   </div>
                 </div>
-                <div className="max-h-96 overflow-y-auto">
+                <div>
                   {permissionsData
                     .filter(domain => {
                       const q = categorySearch.trim().toLowerCase();
@@ -1086,14 +1095,14 @@ function App() {
 
   const renderBreadcrumbs = () => {
     return (
-      <div className="flex w-full items-center justify-center gap-1">
+      <div className="flex w-full items-center justify-center gap-1 text-sm">
         {steps.map((label, index) => (
           <React.Fragment key={label}>
             <div
               className={`flex items-center gap-1 ${
                 index === step
-                  ? 'text-gray-900 opacity-90 text-base font-medium'
-                  : 'text-gray-900 opacity-60 text-base font-normal'
+                  ? 'text-gray-900 opacity-90 font-medium'
+                  : 'text-gray-900 opacity-60 font-normal'
               } ${index <= step ? 'cursor-pointer' : 'cursor-default'}`}
               onClick={() => {
                 if (index <= step) setStep(index);
@@ -1117,6 +1126,34 @@ function App() {
   const handleCloseEditDialog = () => {
     setIsEditDialogOpen(false);
   };
+
+  // Position popover when opening
+  useEffect(() => {
+    if (categoryPopoverAnchor && buttonRef.current && popoverRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const popover = popoverRef.current;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      setPopoverStyle({
+        position: 'absolute',
+        left: `${buttonRect.right - popover.offsetWidth}px`,
+        top: `${buttonRect.bottom + 2 + scrollTop}px`, // 2px gap
+        zIndex: 50,
+      });
+    }
+    if (!categoryPopoverAnchor) return;
+    function handleClick(event: MouseEvent) {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        handleCloseCategoryPopover();
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [categoryPopoverAnchor]);
 
   return (
     <div className="flex h-screen bg-gray-50">
