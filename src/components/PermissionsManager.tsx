@@ -123,72 +123,150 @@ export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
               </div>
             </div>
             <div className="px-8 py-6 space-y-6">
-              {/* Grouped by subdomain */}
-              {groupedEntries.map(([subdomain, subPermissions]) => {
-                const expanded = expandedSubdomains[subdomain] || false;
-                const selectedCount = subPermissions.filter(p => p.isEnabled).length;
+              {/* If only ungrouped permissions, show flat list with enable/disable all button */}
+              {groupedEntries.length === 0 && ungroupedEntries.length > 0 ? (() => {
+                const subPermissions = ungroupedEntries.flatMap(([_, perms]) => perms);
+                const allEnabled = subPermissions.every(p => p.isEnabled);
                 return (
-                  <div key={subdomain} className="border border-gray-200 rounded-xl bg-white mb-3">
-                    <div
-                      className={`flex items-center gap-3 justify-between px-4 py-0 min-h-[56px] h-[56px] cursor-pointer group hover:bg-gray-50 bg-white ${expanded ? 'rounded-t-xl' : 'rounded-xl'} text-left`}
-                      onClick={() => onToggleSubdomain(subdomain)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-                        <span className="text-base font-semibold text-gray-900">{subdomain}</span>
-                        <span className="flex items-center gap-0.5 h-[17px] px-[6px] pt-[2px] pb-[3px] rounded-full text-xs font-medium text-primary-700" style={{ background: '#F5F5F5' }}>
-                          <span className="text-[10px] font-medium text-[#696968] leading-[12px] flex items-center justify-center">{selectedCount}</span>
-                          <span className="text-[10px] text-[#696968] opacity-40 font-sans">/</span>
-                          <span className="text-[10px] text-[#696968] opacity-60 font-medium leading-[12px] flex items-center justify-center" style={{ width: 5, height: 12 }}>{subPermissions.length}</span>
-                        </span>
-                      </div>
-                      {expanded && (
-                        <div className="flex gap-2">
-                          {subPermissions.every(p => p.isEnabled) ? (
-                            <button
-                              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]"
-                              onClick={e => { e.stopPropagation(); onDisableAll(subdomain); }}
-                            >
-                              Disable all
-                            </button>
-                          ) : (
-                            <button
-                              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-primary-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]"
-                              onClick={e => { e.stopPropagation(); onEnableAll(subdomain); }}
-                            >
-                              Enable all
-                            </button>
-                          )}
-                        </div>
-                      )}
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between px-1 pb-2">
+                      <span className="text-base font-semibold text-gray-900">Permissions</span>
+                      <button
+                        className={`rounded-lg bg-white px-4 py-2 text-sm font-medium ${allEnabled ? 'text-gray-500' : 'text-primary-700'} hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]`}
+                        onClick={() => allEnabled ? onDisableAll('-') : onEnableAll('-')}
+                      >
+                        {allEnabled ? 'Disable all' : 'Enable all'}
+                      </button>
                     </div>
-                    {expanded && (
-                      <div className="p-4 space-y-3 bg-white rounded-b-xl">
-                        {subPermissions.map(permission => (
-                          <PermissionRow
-                            key={permission.permission}
-                            permission={permission}
-                            onToggle={() => onTogglePermission(permission)}
-                            onChangeAccessLevel={onChangeAccessLevel}
-                            className="bg-white rounded-xl min-h-[56px] hover:bg-gray-50 transition-colors px-4 py-3 text-left flex items-center"
-                          />
-                        ))}
-                      </div>
-                    )}
+                    <div>
+                      {subPermissions.map(permission => (
+                        <PermissionRow
+                          key={permission.permission}
+                          permission={permission}
+                          onToggle={() => onTogglePermission(permission)}
+                          onChangeAccessLevel={onChangeAccessLevel}
+                          className="border border-gray-200 rounded-xl bg-white min-h-[56px] mb-3 hover:bg-gray-50 transition-colors px-4 py-0 flex items-center h-[56px]"
+                        />
+                      ))}
+                    </div>
                   </div>
                 );
-              })}
-              {/* Ungrouped permissions */}
-              {ungroupedEntries.map(([_, subPermissions]) =>
-                subPermissions.map(permission => (
-                  <PermissionRow
-                    key={permission.permission}
-                    permission={permission}
-                    onToggle={() => onTogglePermission(permission)}
-                    onChangeAccessLevel={onChangeAccessLevel}
-                    className="border border-gray-200 rounded-xl bg-white min-h-[56px] mb-3 hover:bg-gray-50 transition-colors px-4 py-0 flex items-center h-[56px]"
-                  />
-                ))
+              })() : null}
+
+              {/* Otherwise, show grouped and 'Other' as before */}
+              {groupedEntries.length > 0 && (
+                <>
+                  {groupedEntries.map(([subdomain, subPermissions]) => {
+                    const expanded = expandedSubdomains[subdomain] || false;
+                    const selectedCount = subPermissions.filter(p => p.isEnabled).length;
+                    return (
+                      <div key={subdomain} className="border border-gray-200 rounded-xl bg-white mb-3">
+                        <div
+                          className={`flex items-center gap-3 justify-between px-4 py-0 min-h-[56px] h-[56px] cursor-pointer group hover:bg-gray-50 bg-white ${expanded ? 'rounded-t-xl' : 'rounded-xl'} text-left`}
+                          onClick={() => onToggleSubdomain(subdomain)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                            <span className="text-base font-semibold text-gray-900">{subdomain}</span>
+                            <span className="flex items-center gap-0.5 h-[17px] px-[6px] pt-[2px] pb-[3px] rounded-full text-xs font-medium text-primary-700" style={{ background: '#F5F5F5' }}>
+                              <span className="text-[10px] font-medium text-[#696968] leading-[12px] flex items-center justify-center">{selectedCount}</span>
+                              <span className="text-[10px] text-[#696968] opacity-40 font-sans">/</span>
+                              <span className="text-[10px] text-[#696968] opacity-60 font-medium leading-[12px] flex items-center justify-center" style={{ width: 5, height: 12 }}>{subPermissions.length}</span>
+                            </span>
+                          </div>
+                          {expanded && (
+                            <div className="flex gap-2">
+                              {subPermissions.every(p => p.isEnabled) ? (
+                                <button
+                                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]"
+                                  onClick={e => { e.stopPropagation(); onDisableAll(subdomain); }}
+                                >
+                                  Disable all
+                                </button>
+                              ) : (
+                                <button
+                                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-primary-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]"
+                                  onClick={e => { e.stopPropagation(); onEnableAll(subdomain); }}
+                                >
+                                  Enable all
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {expanded && (
+                          <div className="p-4 space-y-3 bg-white rounded-b-xl">
+                            {subPermissions.map(permission => (
+                              <PermissionRow
+                                key={permission.permission}
+                                permission={permission}
+                                onToggle={() => onTogglePermission(permission)}
+                                onChangeAccessLevel={onChangeAccessLevel}
+                                className="bg-white rounded-xl min-h-[56px] hover:bg-gray-50 transition-colors px-4 py-3 text-left flex items-center"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Ungrouped permissions grouped under 'Other' */}
+                  {ungroupedEntries.length > 0 && (() => {
+                    const subPermissions = ungroupedEntries.flatMap(([_, perms]) => perms);
+                    const expanded = expandedSubdomains['Other'] || false;
+                    const selectedCount = subPermissions.filter(p => p.isEnabled).length;
+                    return (
+                      <div key="Other" className="border border-gray-200 rounded-xl bg-white mb-3">
+                        <div
+                          className={`flex items-center gap-3 justify-between px-4 py-0 min-h-[56px] h-[56px] cursor-pointer group hover:bg-gray-50 bg-white ${expanded ? 'rounded-t-xl' : 'rounded-xl'} text-left`}
+                          onClick={() => onToggleSubdomain('Other')}
+                        >
+                          <div className="flex items-center gap-3">
+                            <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                            <span className="text-base font-semibold text-gray-900">Other</span>
+                            <span className="flex items-center gap-0.5 h-[17px] px-[6px] pt-[2px] pb-[3px] rounded-full text-xs font-medium text-primary-700" style={{ background: '#F5F5F5' }}>
+                              <span className="text-[10px] font-medium text-[#696968] leading-[12px] flex items-center justify-center">{selectedCount}</span>
+                              <span className="text-[10px] text-[#696968] opacity-40 font-sans">/</span>
+                              <span className="text-[10px] text-[#696968] opacity-60 font-medium leading-[12px] flex items-center justify-center" style={{ width: 5, height: 12 }}>{subPermissions.length}</span>
+                            </span>
+                          </div>
+                          {expanded && (
+                            <div className="flex gap-2">
+                              {subPermissions.every(p => p.isEnabled) ? (
+                                <button
+                                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]"
+                                  onClick={e => { e.stopPropagation(); onDisableAll('-'); }}
+                                >
+                                  Disable all
+                                </button>
+                              ) : (
+                                <button
+                                  className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-primary-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]"
+                                  onClick={e => { e.stopPropagation(); onEnableAll('-'); }}
+                                >
+                                  Enable all
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {expanded && (
+                          <div className="p-4 space-y-3 bg-white rounded-b-xl">
+                            {subPermissions.map(permission => (
+                              <PermissionRow
+                                key={permission.permission}
+                                permission={permission}
+                                onToggle={() => onTogglePermission(permission)}
+                                onChangeAccessLevel={onChangeAccessLevel}
+                                className="bg-white rounded-xl min-h-[56px] hover:bg-gray-50 transition-colors px-4 py-3 text-left flex items-center"
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
           </div>
@@ -245,7 +323,7 @@ const PermissionRow: React.FC<{
           <span className="ml-2 px-2 py-0.5 text-xs rounded bg-red-100 text-red-700 font-semibold">Sensitive</span>
         )}
         {permission.noScopeLimit && (
-          <span className="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800 font-semibold">No scope limit</span>
+          <span className="ml-2 px-2 py-0.5 text-xs rounded bg-amber-100 text-amber-800 font-semibold whitespace-nowrap">No scope limit</span>
         )}
       </div>
       {permission.isEnabled && actions.length > 1 && !actions.includes('Yes - No') && (
