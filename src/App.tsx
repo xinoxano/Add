@@ -1050,63 +1050,60 @@ function App() {
 
             {/* Edit Permission dialog */}
             {isEditDialogOpen && editDomain && (
-              <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex min-h-screen items-center justify-center p-4">
+              <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
+                <div className="flex min-h-screen items-center justify-center w-full">
                   {/* Backdrop */}
                   <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={handleCloseEditDialog} />
-                  
                   {/* Dialog */}
-                  <div className="relative w-full max-w-7xl transform overflow-hidden rounded-2xl bg-white shadow-xl transition-all">
-                    {/* Header */}
-                    <div className="flex items-center justify-between p-6 pb-0">
-                      <h2 className="text-2xl font-bold text-gray-900">
-                        Edit Permissions - {editDomain}
-                      </h2>
-                      <button
-                        onClick={handleCloseEditDialog}
-                        className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
-                      >
-                        <XMarkIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-6">
-                      {/* Search */}
-                      <div className="relative mb-6">
-                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                          <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          value={editDialogSearch}
-                          onChange={e => setEditDialogSearch(e.target.value)}
-                          placeholder="Search permissions or subdomains..."
-                          className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
+                  <div className="relative w-[704px] max-w-full" style={{ maxHeight: 'calc(100vh - 64px)', marginTop: 32, marginBottom: 32 }}>
+                    <div className="flex flex-col h-[calc(100vh-64px)] bg-white rounded-2xl shadow-xl overflow-hidden" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+                      {/* Header with extra bottom padding */}
+                      <div className="sticky top-0 z-10 bg-white px-6 pt-4 pb-4 border-b border-gray-200 flex items-center justify-between min-h-[48px]">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          Edit Permissions - {editDomain}
+                        </h2>
+                        <button
+                          onClick={handleCloseEditDialog}
+                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
                       </div>
-
-                      {/* Permissions Content */}
-                      {permissionsContent}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-end gap-4 border-t border-gray-200 bg-gray-50 p-6">
-                      <button
-                        type="button"
-                        onClick={handleCloseEditDialog}
-                        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveEditDialog}
-                        disabled={!permissionsChanged(editDomainPermissions, initialEditDomainPermissions)}
-                        className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Save
-                      </button>
+                      {/* Content */}
+                      <div className="flex-1 overflow-y-auto p-6">
+                        {/* Search (not sticky) */}
+                        <div className="relative mb-6">
+                          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                          </div>
+                          <input
+                            type="text"
+                            value={editDialogSearch}
+                            onChange={e => setEditDialogSearch(e.target.value)}
+                            placeholder="Search permission..."
+                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                        {/* Permissions Content */}
+                        {permissionsContent}
+                      </div>
+                      {/* Footer */}
+                      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 flex items-center justify-end gap-4 px-6 py-4 min-h-[48px]">
+                        <button
+                          type="button"
+                          onClick={handleCloseEditDialog}
+                          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveEditDialog}
+                          className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        >
+                          Save
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
