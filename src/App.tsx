@@ -926,54 +926,74 @@ function App() {
       case 1:
         return (
           <div className="min-h-[calc(100vh-80px)] bg-white">
-            <div className="flex items-center justify-between px-8 py-4">
-              <h2 className="text-2xl font-bold text-gray-900">Permissions</h2>
-              <button
-                ref={buttonRef}
-                type="button"
-                className="flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                onClick={handleOpenCategoryPopover}
-              >
-                Add permissions
-                <ChevronDownIcon className="ml-2 h-4 w-4" />
-              </button>
-            </div>
+            <div className="max-w-7xl mx-auto px-8">
+              <div className="flex items-center justify-between py-4">
+                <h2 className="text-2xl font-bold text-gray-900">Permissions</h2>
+                <button
+                  ref={buttonRef}
+                  type="button"
+                  className="flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  onClick={handleOpenCategoryPopover}
+                >
+                  Add permissions
+                  <ChevronDownIcon className="ml-2 h-4 w-4" />
+                </button>
+              </div>
 
-            {/* Category Popover */}
-            {Boolean(categoryPopoverAnchor) && (
-              <div
-                ref={popoverRef}
-                className="w-80 rounded-lg border border-gray-200 bg-white shadow-lg"
-                style={popoverStyle}
-              >
-                <div className="p-4">
-                  <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              {/* Category Popover */}
+              {Boolean(categoryPopoverAnchor) && (
+                <div
+                  ref={popoverRef}
+                  className="w-80 rounded-lg border border-gray-200 bg-white shadow-lg"
+                  style={popoverStyle}
+                >
+                  <div className="p-4">
+                      <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                        <input
+                          type="text"
+                        value={categorySearch}
+                        onChange={e => setCategorySearch(e.target.value)}
+                          placeholder="Search..."
+                        className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        autoFocus
+                        onClick={e => e.stopPropagation()}
+                        onMouseDown={e => e.stopPropagation()}
+                      />
+                      {categorySearch && (
+                        <button
+                          onClick={() => setCategorySearch('')}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3"
+                        >
+                          <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-500" />
+                        </button>
+                      )}
+                      </div>
                     </div>
-                    <input
-                      type="text"
-                      value={categorySearch}
-                      onChange={e => setCategorySearch(e.target.value)}
-                      placeholder="Search..."
-                      className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      autoFocus
-                      onClick={e => e.stopPropagation()}
-                      onMouseDown={e => e.stopPropagation()}
-                    />
-                    {categorySearch && (
-                      <button
-                        onClick={() => setCategorySearch('')}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3"
-                      >
-                        <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  {permissionsData
-                    .filter(domain => {
+                    <div>
+                    {permissionsData
+                      .filter(domain => {
+                        const q = categorySearch.trim().toLowerCase();
+                        if (!q) return true;
+                        if (domain.name.toLowerCase().includes(q)) return true;
+                        if (domain.permissions.some(p =>
+                          (p.subdomain && p.subdomain.toLowerCase().includes(q)) ||
+                          p.name.toLowerCase().includes(q)
+                        )) return true;
+                        return false;
+                      })
+                      .map((domain: any) => (
+                        <button
+                          key={domain.name}
+                          onClick={() => handleSelectCategory(domain.name)}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          {domain.name}
+                        </button>
+                      ))}
+                    {permissionsData.filter(domain => {
                       const q = categorySearch.trim().toLowerCase();
                       if (!q) return true;
                       if (domain.name.toLowerCase().includes(q)) return true;
@@ -982,207 +1002,35 @@ function App() {
                         p.name.toLowerCase().includes(q)
                       )) return true;
                       return false;
-                    })
-                    .map((domain: any) => (
-                      <button
-                        key={domain.name}
-                        onClick={() => handleSelectCategory(domain.name)}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        {domain.name}
-                      </button>
-                    ))}
-                  {permissionsData.filter(domain => {
-                    const q = categorySearch.trim().toLowerCase();
-                    if (!q) return true;
-                    if (domain.name.toLowerCase().includes(q)) return true;
-                    if (domain.permissions.some(p =>
-                      (p.subdomain && p.subdomain.toLowerCase().includes(q)) ||
-                      p.name.toLowerCase().includes(q)
-                    )) return true;
-                    return false;
-                  }).length === 0 && (
-                    <div className="px-4 py-2 text-sm text-gray-500">No results found</div>
-                  )}
-                </div>
+                    }).length === 0 && (
+                      <div className="px-4 py-2 text-sm text-gray-500">No results found</div>
+                )}
               </div>
-            )}
+            </div>
+              )}
 
-            {/* Permissions List */}
-            <div className="px-8 py-4">
+              {/* Permissions List */}
+              <div className="py-4">
               {/* Empty state */}
               {permissions.length === 0 && (
-                <div className="flex min-h-[50vh] flex-col items-center justify-center">
-                  <h3 className="mb-1 text-lg font-semibold text-gray-900">Add permission</h3>
-                  <p className="text-sm text-gray-500">Permissions will be listed here.</p>
+                  <div className="flex min-h-[50vh] flex-col items-center justify-center">
+                    <h3 className="mb-1 text-lg font-semibold text-gray-900">Add permission</h3>
+                    <p className="text-sm text-gray-500">Permissions will be listed here.</p>
                 </div>
               )}
 
-              {/* Permissions by domain */}
-              {Array.from(new Set(permissions.map(p => p.domain))).map(domain => (
-                <div
-                  key={domain}
-                  onClick={() => handleOpenEditDomain(domain)}
-                  className="mb-4 cursor-pointer rounded-lg border border-gray-200 bg-gray-50 p-4 hover:border-primary hover:shadow-sm"
-                >
-                  <h3 className="text-lg font-semibold text-gray-900">{domain}</h3>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="fixed bottom-0 left-60 right-0 z-50 flex items-center justify-end gap-4 border-t border-gray-200 bg-white p-4">
-              <button
-                type="button"
-                onClick={() => setStep((s) => Math.max(0, s - 1))}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-                className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              >
-                Next
-              </button>
-            </div>
-
-            {/* Edit Permission dialog */}
-            {isEditDialogOpen && editDomain && (
-              <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
-                <div className="flex min-h-screen items-center justify-center w-full">
-                  {/* Backdrop */}
-                  <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={handleCloseEditDialog} />
-                  {/* Dialog */}
-                  <div className="relative w-[704px] max-w-full" style={{ maxHeight: 'calc(100vh - 64px)', marginTop: 32, marginBottom: 32 }}>
-                    <div className="flex flex-col h-[calc(100vh-64px)] bg-white rounded-2xl shadow-xl overflow-hidden" style={{ maxHeight: 'calc(100vh - 64px)' }}>
-                      {/* Header with extra bottom padding */}
-                      <div className="sticky top-0 z-10 bg-white px-6 pt-4 pb-4 border-b border-gray-200 flex items-center justify-between min-h-[48px]">
-                        <h2 className="text-2xl font-bold text-gray-900">
-                          Edit Permissions - {editDomain}
-                        </h2>
-                        <button
-                          onClick={handleCloseEditDialog}
-                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
-                        >
-                          <XMarkIcon className="h-5 w-5" />
-                        </button>
+                {/* Permissions by domain */}
+                {Array.from(new Set(permissions.map(p => p.domain))).map(domain => (
+                  <div
+                    key={domain}
+                    onClick={() => handleOpenEditDomain(domain)}
+                    className="mb-4 cursor-pointer rounded-lg border border-gray-200 bg-gray-50 p-4 hover:border-primary hover:shadow-sm"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900">{domain}</h3>
                       </div>
-                      {/* Content */}
-                      <div className="flex-1 overflow-y-auto p-6">
-                        {/* Search (not sticky) */}
-                        <div className="relative mb-6">
-                          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <input
-                            type="text"
-                            value={editDialogSearch}
-                            onChange={e => setEditDialogSearch(e.target.value)}
-                            placeholder="Search permission..."
-                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                          />
-                        </div>
-                        {/* Permissions Content */}
-                        {permissionsContent}
-                      </div>
-                      {/* Footer */}
-                      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 flex items-center justify-end gap-4 px-6 py-4 min-h-[48px]">
-                        <button
-                          type="button"
-                          onClick={handleCloseEditDialog}
-                          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveEditDialog}
-                          className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
-            )}
-            {/* Add Permission dialog */}
-            {isDialogOpen && (
-              <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
-                <div className="flex min-h-screen items-center justify-center w-full">
-                  {/* Backdrop */}
-                  <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={handleCloseDialog} />
-                  {/* Dialog */}
-                  <div className="relative w-[704px] max-w-full" style={{ maxHeight: 'calc(100vh - 64px)', marginTop: 32, marginBottom: 32 }}>
-                    <div className="flex flex-col h-[calc(100vh-64px)] bg-white rounded-2xl shadow-xl overflow-hidden" style={{ maxHeight: 'calc(100vh - 64px)' }}>
-                      {/* Header with extra bottom padding */}
-                      <div className="sticky top-0 z-10 bg-white px-6 pt-4 pb-4 border-b border-gray-200 flex items-center justify-between min-h-[48px]">
-                        <h2 className="text-2xl font-bold text-gray-900">
-                          Add Permissions - {dialogCategory}
-                        </h2>
-                        <button
-                          onClick={handleCloseDialog}
-                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
-                        >
-                          <XMarkIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                      {/* Content */}
-                      <div className="flex-1 overflow-y-auto p-6">
-                        {/* Search (not sticky) */}
-                        <div className="relative mb-6">
-                          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-                          </div>
-                          <input
-                            type="text"
-                            value={addDialogSearch}
-                            onChange={e => setAddDialogSearch(e.target.value)}
-                            placeholder="Search permission..."
-                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-10 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                          />
-                          {addDialogSearch && (
-                            <button
-                              onClick={() => setAddDialogSearch('')}
-                              className="absolute inset-y-0 right-0 flex items-center pr-3"
-                              tabIndex={0}
-                              aria-label="Clear search"
-                            >
-                              <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-500" />
-                            </button>
-                          )}
-                        </div>
-                        {/* Permissions Content */}
-                        {addDialogPermissionsContent}
-                      </div>
-                      {/* Footer */}
-                      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 flex items-center justify-end gap-4 px-6 py-4 min-h-[48px]">
-                        <button
-                          type="button"
-                          onClick={handleCloseDialog}
-                          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleDialogSave}
-                          disabled={!dialogSelectedPermissions.some(p => p.isEnabled)}
-                          className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {dialogSelectedPermissions.filter(p => p.isEnabled).length > 0
-                            ? `Add ${dialogSelectedPermissions.filter(p => p.isEnabled).length} permission${dialogSelectedPermissions.filter(p => p.isEnabled).length === 1 ? '' : 's'}`
-                            : 'Add permissions'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         );
       case 2:
@@ -1505,38 +1353,37 @@ function App() {
           </div>
 
           {/* Step Content */}
-          <div className="flex-1 p-8">
+          <div className="flex-1 p-8 pb-[72px]">
             {renderStepContent()}
           </div>
-
-          {/* Consistent Footer */}
-          <div className="border-t border-gray-200 bg-white px-8 py-4 flex items-center justify-end gap-4" style={{ minHeight: '56px' }}>
-            {step > 0 && (
+          {/* Wizard Footer: Always present, sticky at bottom of main content */}
+          <div className="sticky bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white py-4">
+            <div className="max-w-7xl mx-auto flex items-center justify-end space-x-4 px-8" style={{ minHeight: '56px' }}>
               <button
                 type="button"
                 onClick={() => setStep((s) => Math.max(0, s - 1))}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                className={`rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px] ${(Number(step) === 0) ? 'invisible pointer-events-none' : ''}`}
               >
                 Back
               </button>
-            )}
-            {step < steps.length - 1 && (
-              <button
-                type="button"
-                onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-                className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              >
-                Next
-              </button>
-            )}
-            {step === steps.length - 1 && (
-              <button
-                type="button"
-                className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-              >
-                Confirm
-              </button>
-            )}
+              {step < steps.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+                  className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px] mr-0"
+                >
+                  Next
+                </button>
+              )}
+              {step === steps.length - 1 && (
+                <button
+                  type="button"
+                  className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px] mr-0"
+                >
+                  Confirm
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
