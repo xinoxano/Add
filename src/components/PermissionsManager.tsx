@@ -1,27 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Typography,
-  IconButton,
-  Checkbox,
-  FormControlLabel,
-  ToggleButtonGroup,
-  ToggleButton,
-  Chip,
-  Card,
-  CardContent,
-  Collapse,
-  Switch,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import React, { useState } from 'react';
+import Modal from './Modal';
 import { permissionsData } from '../data/permissionsData';
 import { Domain, Permission, AccessLevel } from '../types/permissions';
+import { XMarkIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 
 interface PermissionsManagerProps {
   open: boolean;
@@ -93,7 +74,7 @@ export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
           subdomain: domain.subdomain,
           permission: permission.name,
           isEnabled: true,
-          accessLevel: permission.supportedActions.includes('View') ? 'View' : undefined,
+          accessLevel: Array.isArray(permission.supportedActions) && permission.supportedActions.includes('View') ? 'View' : undefined,
           isSensitive: permission.isSensitive,
         };
         return [...prev, newPermission];
@@ -129,285 +110,206 @@ export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 2,
-          boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)',
-        },
-      }}
-    >
-      <DialogTitle sx={{ 
-        m: 0, 
-        p: 2,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: '1px solid',
-        borderColor: 'divider'
-      }}>
-        <Typography variant="h6" component="div">
-          Add Permission
-        </Typography>
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          sx={{
-            color: (theme) => theme.palette.grey[500],
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-
-      <DialogContent sx={{ p: 3 }}>
-        {permissionsData.map((domain: Domain) => (
-          <Card 
-            key={domain.name}
-            sx={{ 
-              mb: 2,
-              border: '1px solid',
-              borderColor: 'divider',
-              '&:hover': {
-                borderColor: 'primary.main',
-              },
-            }}
+    <Modal open={open} onClose={onClose}>
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900">Add Permission</h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus:outline-none"
+            aria-label="Close"
           >
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={domain.permissions.some(p => isPermissionSelected(p.name))}
-                      onChange={() => handleDomainToggle(domain.name)}
-                    />
-                  }
-                  label={
-                    <Typography variant="h6" component="div">
-                      {domain.name}
-                    </Typography>
-                  }
-                />
-                <IconButton
-                  onClick={() => handleDomainToggle(domain.name)}
-                  sx={{
-                    transform: isDomainExpanded(domain.name) ? 'rotate(180deg)' : 'none',
-                    transition: 'transform 0.3s',
-                  }}
-                >
-                  <ExpandMoreIcon />
-                </IconButton>
-              </Box>
-
-              <Collapse in={isDomainExpanded(domain.name)}>
-                {/* Group permissions by subdomain */}
-                {(() => {
-                  const groupedBySubdomain = domain.permissions.reduce((acc, permission) => {
-                    // Use permission.subdomain if present, otherwise fallback to domain.subdomain or '-'
-                    const subdomain = (permission as any).subdomain || domain.subdomain || '-';
-                    if (!acc[subdomain]) acc[subdomain] = [];
-                    acc[subdomain].push(permission);
-                    return acc;
-                  }, {} as Record<string, Permission[]>);
-                  return (
-                    <Box sx={{ mt: 2, ml: 2 }}>
-                      {Object.entries(groupedBySubdomain).map(([subdomain, subPermissions]) => {
-                        if (subdomain === '-') {
-                          // Render non-grouped permissions directly
-                          return subPermissions.map((permission) => (
-                            <Box
-                              key={permission.name}
-                              sx={{
-                                p: 2,
-                                mb: 1,
-                                border: '1px solid',
-                                borderColor: isPermissionSelected(permission.name) ? 'primary.main' : 'divider',
-                                borderRadius: 1,
-                                '&:hover': {
-                                  borderColor: 'primary.main',
-                                  bgcolor: 'action.hover',
-                                },
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                <FormControlLabel
-                                  control={
-                                    <Checkbox
-                                      checked={isPermissionSelected(permission.name)}
-                                      onChange={() => handlePermissionToggle(domain, permission)}
-                                    />
-                                  }
-                                  label={
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Typography variant="body1">{permission.name}</Typography>
-                                      {permission.isSensitive && (
-                                        <Chip
-                                          label="Sensitive"
-                                          size="small"
-                                          color="error"
-                                          sx={{ ml: 1 }}
-                                        />
-                                      )}
-                                    </Box>
-                                  }
-                                />
-                              </Box>
-                              {isPermissionSelected(permission.name) && 
-                                permission.supportedActions !== 'Yes - No' && (
-                                <Box sx={{ mt: 1, ml: 4 }}>
-                                  <ToggleButtonGroup
-                                    value={getSelectedAccessLevel(permission.name)}
-                                    exclusive
-                                    onChange={(_, value) => value && handleAccessLevelChange(permission, value)}
-                                    size="small"
-                                  >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {permissionsData.map((domain: Domain) => (
+            <div
+              key={domain.name}
+              className="mb-4 border border-gray-200 rounded-lg hover:border-primary-500 transition-colors"
+            >
+              <div className="flex items-center justify-between px-4 py-2 cursor-pointer" onClick={() => handleDomainToggle(domain.name)}>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={domain.permissions.some(p => isPermissionSelected(p.name))}
+                    onChange={() => handleDomainToggle(domain.name)}
+                    className="form-checkbox h-5 w-5 text-primary-600 rounded focus:ring-primary-500"
+                    onClick={e => e.stopPropagation()}
+                  />
+                  <span className="text-lg font-semibold text-gray-900">{domain.name}</span>
+                </div>
+                <button className="p-1 text-gray-500 hover:bg-gray-100 rounded" onClick={e => { e.stopPropagation(); handleDomainToggle(domain.name); }}>
+                  {isDomainExpanded(domain.name) ? (
+                    <ChevronUpIcon className="h-5 w-5" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+              {/* Permissions by subdomain */}
+              {isDomainExpanded(domain.name) && (
+                <div className="pl-8 pb-4">
+                  {(() => {
+                    const groupedBySubdomain = domain.permissions.reduce((acc, permission) => {
+                      const subdomain = (permission as any).subdomain || domain.subdomain || '-';
+                      if (!acc[subdomain]) acc[subdomain] = [];
+                      acc[subdomain].push(permission);
+                      return acc;
+                    }, {} as Record<string, Permission[]>);
+                    return (
+                      <div>
+                        {Object.entries(groupedBySubdomain).map(([subdomain, subPermissions]) => {
+                          if (subdomain === '-') {
+                            // Render non-grouped permissions directly
+                            return subPermissions.map((permission) => (
+                              <div
+                                key={permission.name}
+                                className={`p-3 mb-2 border rounded-lg flex flex-col gap-2 ${isPermissionSelected(permission.name) ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white'} transition-colors`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={isPermissionSelected(permission.name)}
+                                    onChange={() => handlePermissionToggle(domain, permission)}
+                                    className="form-checkbox h-5 w-5 text-primary-600 rounded focus:ring-primary-500"
+                                  />
+                                  <span className="text-base text-gray-900">{permission.name}</span>
+                                  {permission.isSensitive && (
+                                    <span className="ml-2 px-2 py-0.5 text-xs rounded bg-red-100 text-red-700">Sensitive</span>
+                                  )}
+                                </div>
+                                {isPermissionSelected(permission.name) && Array.isArray(permission.supportedActions) && permission.supportedActions.length > 1 && (
+                                  <div className="flex gap-2 mt-2 ml-6">
                                     {permission.supportedActions.includes('View') && (
-                                      <ToggleButton value="View">View</ToggleButton>
+                                      <button
+                                        className={`px-3 py-1 rounded text-sm font-medium border ${getSelectedAccessLevel(permission.name) === 'View' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-700 border-gray-300'} transition-colors`}
+                                        onClick={() => handleAccessLevelChange(permission, 'View')}
+                                      >
+                                        View
+                                      </button>
                                     )}
                                     {permission.supportedActions.includes('Propose') && (
-                                      <ToggleButton value="Propose">Propose</ToggleButton>
+                                      <button
+                                        className={`px-3 py-1 rounded text-sm font-medium border ${getSelectedAccessLevel(permission.name) === 'Propose' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-700 border-gray-300'} transition-colors`}
+                                        onClick={() => handleAccessLevelChange(permission, 'Propose')}
+                                      >
+                                        Propose
+                                      </button>
                                     )}
                                     {permission.supportedActions.includes('Edit') && (
-                                      <ToggleButton value="Edit">Edit</ToggleButton>
+                                      <button
+                                        className={`px-3 py-1 rounded text-sm font-medium border ${getSelectedAccessLevel(permission.name) === 'Edit' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-700 border-gray-300'} transition-colors`}
+                                        onClick={() => handleAccessLevelChange(permission, 'Edit')}
+                                      >
+                                        Edit
+                                      </button>
                                     )}
-                                  </ToggleButtonGroup>
-                                </Box>
-                              )}
-                            </Box>
-                          ));
-                        }
-                        // Grouped permissions by subdomain
-                        return (
-                          <Box
-                            key={subdomain}
-                            sx={{
-                              mb: 2,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              borderRadius: 1,
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                p: 2,
-                                bgcolor: 'background.default',
-                                borderBottom: '1px solid',
-                                borderColor: 'divider',
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Typography variant="subtitle1">{subdomain}</Typography>
-                                <Chip
-                                  label={`${subPermissions.length} permissions`}
-                                  size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                />
-                              </Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Switch
-                                  size="small"
-                                  checked={expandedSubdomains[subdomain] || false}
-                                  onChange={() => handleSubdomainToggle(subdomain)}
-                                />
-                              </Box>
-                            </Box>
-                            <Collapse in={expandedSubdomains[subdomain] || false}>
-                              <Box sx={{ p: 2 }}>
-                                {subPermissions.map((permission) => (
-                                  <Box
-                                    key={permission.name}
-                                    sx={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      p: 2,
-                                      mb: 1,
-                                      border: '1px solid',
-                                      borderColor: isPermissionSelected(permission.name) ? 'primary.main' : 'divider',
-                                      borderRadius: 1,
-                                    }}
-                                  >
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                      <FormControlLabel
-                                        control={
-                                          <Checkbox
-                                            checked={isPermissionSelected(permission.name)}
-                                            onChange={() => handlePermissionToggle(domain, permission)}
-                                          />
-                                        }
-                                        label={
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Typography variant="body1">{permission.name}</Typography>
-                                            {permission.isSensitive && (
-                                              <Chip
-                                                label="Sensitive"
-                                                size="small"
-                                                color="error"
-                                                sx={{ ml: 1 }}
-                                              />
-                                            )}
-                                          </Box>
-                                        }
-                                      />
-                                    </Box>
-                                    {isPermissionSelected(permission.name) && 
-                                      permission.supportedActions !== 'Yes - No' && (
-                                      <Box sx={{ mt: 1, ml: 4 }}>
-                                        <ToggleButtonGroup
-                                          value={getSelectedAccessLevel(permission.name)}
-                                          exclusive
-                                          onChange={(_, value) => value && handleAccessLevelChange(permission, value)}
-                                          size="small"
-                                        >
+                                  </div>
+                                )}
+                              </div>
+                            ));
+                          }
+                          // Grouped permissions by subdomain
+                          return (
+                            <div key={subdomain} className="mb-4 border rounded-lg overflow-hidden">
+                              <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-gray-700">{subdomain}</span>
+                                  <span className="ml-2 px-2 py-0.5 text-xs rounded border border-primary-200 text-primary-700 bg-primary-50">{subPermissions.length} permissions</span>
+                                </div>
+                                <button
+                                  className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+                                  onClick={() => handleSubdomainToggle(subdomain)}
+                                >
+                                  {expandedSubdomains[subdomain] ? (
+                                    <ChevronUpIcon className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDownIcon className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
+                              {expandedSubdomains[subdomain] && (
+                                <div className="p-3">
+                                  {subPermissions.map((permission) => (
+                                    <div
+                                      key={permission.name}
+                                      className={`flex flex-col gap-2 mb-2 border rounded-lg p-3 ${isPermissionSelected(permission.name) ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white'} transition-colors`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={isPermissionSelected(permission.name)}
+                                          onChange={() => handlePermissionToggle(domain, permission)}
+                                          className="form-checkbox h-5 w-5 text-primary-600 rounded focus:ring-primary-500"
+                                        />
+                                        <span className="text-base text-gray-900">{permission.name}</span>
+                                        {permission.isSensitive && (
+                                          <span className="ml-2 px-2 py-0.5 text-xs rounded bg-red-100 text-red-700">Sensitive</span>
+                                        )}
+                                      </div>
+                                      {isPermissionSelected(permission.name) && Array.isArray(permission.supportedActions) && permission.supportedActions.length > 1 && (
+                                        <div className="flex gap-2 mt-2 ml-6">
                                           {permission.supportedActions.includes('View') && (
-                                            <ToggleButton value="View">View</ToggleButton>
+                                            <button
+                                              className={`px-3 py-1 rounded text-sm font-medium border ${getSelectedAccessLevel(permission.name) === 'View' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-700 border-gray-300'} transition-colors`}
+                                              onClick={() => handleAccessLevelChange(permission, 'View')}
+                                            >
+                                              View
+                                            </button>
                                           )}
                                           {permission.supportedActions.includes('Propose') && (
-                                            <ToggleButton value="Propose">Propose</ToggleButton>
+                                            <button
+                                              className={`px-3 py-1 rounded text-sm font-medium border ${getSelectedAccessLevel(permission.name) === 'Propose' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-700 border-gray-300'} transition-colors`}
+                                              onClick={() => handleAccessLevelChange(permission, 'Propose')}
+                                            >
+                                              Propose
+                                            </button>
                                           )}
                                           {permission.supportedActions.includes('Edit') && (
-                                            <ToggleButton value="Edit">Edit</ToggleButton>
+                                            <button
+                                              className={`px-3 py-1 rounded text-sm font-medium border ${getSelectedAccessLevel(permission.name) === 'Edit' ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-700 border-gray-300'} transition-colors`}
+                                              onClick={() => handleAccessLevelChange(permission, 'Edit')}
+                                            >
+                                              Edit
+                                            </button>
                                           )}
-                                        </ToggleButtonGroup>
-                                      </Box>
-                                    )}
-                                  </Box>
-                                ))}
-                              </Box>
-                            </Collapse>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  );
-                })()}
-              </Collapse>
-            </CardContent>
-          </Card>
-        ))}
-      </DialogContent>
-
-      <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Button onClick={onClose} color="inherit">
-          Cancel
-        </Button>
-        <Button
-          onClick={handleAddPermission}
-          variant="contained"
-          disabled={selectedPermissions.length === 0}
-        >
-          Add {selectedPermissions.length} Permission{selectedPermissions.length !== 1 ? 's' : ''}
-        </Button>
-      </DialogActions>
-    </Dialog>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-4 border-t border-gray-200 px-6 py-4 bg-white rounded-b-2xl">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAddPermission}
+            className={`rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-600 hover:to-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+            disabled={selectedPermissions.length === 0}
+          >
+            Add {selectedPermissions.length} Permission{selectedPermissions.length !== 1 ? 's' : ''}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }; 
