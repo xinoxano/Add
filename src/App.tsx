@@ -101,6 +101,45 @@ function parseSupportedActions(supportedActions: SupportedActions): AccessLevel[
   return [];
 }
 
+function getPermissionSummary(domain: string, permissions: SelectedPermission[]) {
+  const enabled = permissions.filter(p => p.domain === domain && p.isEnabled);
+  if (enabled.length === 0) return { summary: 'No permissions enabled.', hasSensitive: false };
+  // Group by access level (or 'Access' if none)
+  const groups: Record<string, string[]> = {};
+  enabled.forEach(p => {
+    let key = p.accessLevel ? p.accessLevel.charAt(0).toUpperCase() + p.accessLevel.slice(1).toLowerCase() : '';
+    if (!key) key = 'Access';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p.permission);
+  });
+  // Order: Edit, Propose, View, Access
+  const order = ['Edit', 'Propose', 'View', 'Access'];
+  const parts: string[] = [];
+  order.forEach(level => {
+    if (groups[level]) {
+      const perms = groups[level];
+      let label = '';
+      // Wrap the access level in a span for bold font
+      const levelSpan = `<span class=\"font-semibold\">${level}</span>`;
+      if (level === 'Access') {
+        if (perms.length === 1) label = `${levelSpan} to ${perms[0]}`;
+        else if (perms.length === 2) label = `${levelSpan} to ${perms[0]} and ${perms[1]}`;
+        else label = `${levelSpan} to ${perms.slice(0, -1).join(', ')}, and ${perms[perms.length - 1]}`;
+      } else {
+        if (perms.length === 1) label = `${levelSpan} access to ${perms[0]}`;
+        else if (perms.length === 2) label = `${levelSpan} access to ${perms[0]} and ${perms[1]}`;
+        else label = `${levelSpan} access to ${perms.slice(0, -1).join(', ')}, and ${perms[perms.length - 1]}`;
+      }
+      parts.push(label);
+    }
+  });
+  let summary = parts.join('. ') + '.';
+  // Capitalize first letter
+  summary = summary.charAt(0).toUpperCase() + summary.slice(1);
+  const hasSensitive = enabled.some(p => p.isSensitive);
+  return { summary, hasSensitive };
+}
+
 function App() {
   const [step, setStep] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -1020,15 +1059,24 @@ function App() {
               )}
 
                 {/* Permissions by domain */}
-                {Array.from(new Set(permissions.map(p => p.domain))).reverse().map(domain => (
-                  <div
-                    key={domain}
-                    onClick={() => handleOpenEditDomain(domain)}
-                    className="mb-4 cursor-pointer rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 hover:bg-gray-50 transition-colors"
-                  >
-                    <h3 className="text-lg font-semibold text-gray-900">{domain}</h3>
-                  </div>
-                ))}
+                {Array.from(new Set(permissions.map(p => p.domain))).reverse().map(domain => {
+                  const { summary, hasSensitive } = getPermissionSummary(domain, permissions);
+                  return (
+                    <div
+                      key={domain}
+                      onClick={() => handleOpenEditDomain(domain)}
+                      className="mb-4 cursor-pointer rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 hover:bg-gray-50 transition-colors relative"
+                    >
+                      {hasSensitive && (
+                        <span className="absolute top-4 right-4 whitespace-nowrap px-2 py-0.5 text-xs rounded bg-red-100 text-red-700 font-semibold">Sensitive</span>
+                      )}
+                      <h3 className="text-lg font-semibold text-gray-900">{domain}</h3>
+                      <div className="mt-1 flex items-center">
+                        <p className="text-sm text-gray-600 flex-1" dangerouslySetInnerHTML={{ __html: summary }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
