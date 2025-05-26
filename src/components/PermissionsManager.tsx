@@ -28,6 +28,7 @@ interface PermissionsManagerProps {
   onDisableAll: (subdomain: string) => void;
   search: string;
   onSearchChange: (value: string) => void;
+  isEdit?: boolean;
 }
 
 export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
@@ -44,6 +45,7 @@ export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
   onDisableAll,
   search,
   onSearchChange,
+  isEdit = false,
 }) => {
   // Group permissions by subdomain
   const grouped = permissions.reduce((acc, p) => {
@@ -82,7 +84,7 @@ export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-5 sticky top-0 bg-white z-20 border-b border-gray-100" style={{ minHeight: 72 }}>
           <div className="flex items-center gap-1">
-            <h2 className="text-2xl font-bold text-gray-900">Add Permission</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Permission' : 'Add Permission'}</h2>
             {domain && (
               <span className="text-2xl font-bold text-gray-900 align-middle">·</span>
             )}
@@ -281,13 +283,10 @@ export const PermissionsManager: React.FC<PermissionsManagerProps> = ({
           </button>
           <button
             onClick={onAddPermissions}
-            disabled={permissions.filter(p => p.isEnabled).length === 0}
-            className={
-              "rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px] " +
-              (permissions.filter(p => p.isEnabled).length === 0 ? "opacity-60 cursor-not-allowed pointer-events-none" : "")
-            }
+            className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 min-w-[88px]"
+            type="button"
           >
-            Add {permissions.filter(p => p.isEnabled).length} Permission{permissions.filter(p => p.isEnabled).length !== 1 ? 's' : ''}
+            {isEdit ? 'Save' : `Add ${permissions.filter(p => p.isEnabled).length} Permission${permissions.filter(p => p.isEnabled).length !== 1 ? 's' : ''}`}
           </button>
         </div>
       </div>

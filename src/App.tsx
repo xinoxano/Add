@@ -1020,14 +1020,14 @@ function App() {
               )}
 
                 {/* Permissions by domain */}
-                {Array.from(new Set(permissions.map(p => p.domain))).map(domain => (
+                {Array.from(new Set(permissions.map(p => p.domain))).reverse().map(domain => (
                   <div
                     key={domain}
                     onClick={() => handleOpenEditDomain(domain)}
-                    className="mb-4 cursor-pointer rounded-lg border border-gray-200 bg-gray-50 p-4 hover:border-primary hover:shadow-sm"
+                    className="mb-4 cursor-pointer rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 hover:bg-gray-50 transition-colors"
                   >
                     <h3 className="text-lg font-semibold text-gray-900">{domain}</h3>
-                      </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -1376,6 +1376,31 @@ function App() {
         onDisableAll={handleAddDialogDisableAll}
         search={addDialogSearch}
         onSearchChange={handleAddDialogSearchChange}
+      />
+      {/* Edit dialog PermissionsManager */}
+      <PermissionsManager
+        open={isEditDialogOpen}
+        onClose={handleCloseEditDialog}
+        onAddPermissions={handleSaveEditDialog}
+        domain={editDomain || ''}
+        permissions={editDomainPermissions}
+        expandedSubdomains={editDialogExpandedSubdomains}
+        onToggleSubdomain={handleEditDialogSubdomainChevron}
+        onTogglePermission={(permission) => {
+          setEditDomainPermissions(prev => prev.map(p => p.permission === permission.permission && p.subdomain === permission.subdomain ? { ...p, isEnabled: !p.isEnabled } : p));
+        }}
+        onChangeAccessLevel={(permission, level) => {
+          setEditDomainPermissions(prev => prev.map(p => p.permission === permission.permission && p.subdomain === permission.subdomain ? { ...p, accessLevel: level } : p));
+        }}
+        onEnableAll={(subdomain) => {
+          setEditDomainPermissions(prev => prev.map(p => p.subdomain === subdomain ? { ...p, isEnabled: true } : p));
+        }}
+        onDisableAll={(subdomain) => {
+          setEditDomainPermissions(prev => prev.map(p => p.subdomain === subdomain ? { ...p, isEnabled: false } : p));
+        }}
+        search={editDialogSearch}
+        onSearchChange={setEditDialogSearch}
+        isEdit={true}
       />
     </>
   );
