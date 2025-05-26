@@ -10,7 +10,12 @@ module.exports = {
     'hover:from-[#9333ea]',
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary: '#7C3AED',
+        'primary-dark': '#6C2FC7',
+      },
+    },
   },
   plugins: [],
 }
