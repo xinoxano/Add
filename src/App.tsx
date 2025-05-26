@@ -484,7 +484,7 @@ function App() {
                 <span className="rounded-full bg-gray-100 text-gray-900 h-[17px] px-[6px] pt-[2px] pb-[3px] text-xs font-medium flex items-center justify-center">
                   <span className="text-[10px] font-medium text-[#696968]">{safeSubPermissions.filter((p: any) => p.isEnabled).length}</span>
                   <span className="mx-0.5 text-[10px] text-[#696968] opacity-40 font-sans">/</span>
-                  <span className="text-[10px] text-[#696968] opacity-60 font-medium">{safeSubPermissions.length}</span>
+                  <span className="text-[10px] text-[#696968] opacity-60 font-medium flex items-center justify-center" style={{ width: 5, height: 12 }}>{safeSubPermissions.length}</span>
                 </span>
               </div>
               {expanded && (
@@ -729,7 +729,7 @@ function App() {
                 <span className="rounded-full bg-gray-100 text-gray-900 h-[17px] px-[6px] pt-[2px] pb-[3px] text-xs font-medium flex items-center justify-center">
                   <span className="text-[10px] font-medium text-[#696968]">{safeSubPermissions.filter((p: any) => p.isEnabled).length}</span>
                   <span className="mx-0.5 text-[10px] text-[#696968] opacity-40 font-sans">/</span>
-                  <span className="text-[10px] text-[#696968] opacity-60 font-medium">{safeSubPermissions.length}</span>
+                  <span className="text-[10px] text-[#696968] opacity-60 font-medium flex items-center justify-center" style={{ width: 5, height: 12 }}>{safeSubPermissions.length}</span>
                 </span>
               </div>
               {expanded && (
