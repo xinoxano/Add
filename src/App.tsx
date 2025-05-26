@@ -127,6 +127,12 @@ function App() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
 
+  // Add dialog permissions content
+  const [addDialogExpandedSubdomains, setAddDialogExpandedSubdomains] = useState<Record<string, boolean>>({});
+
+  // Track manual toggles for add dialog groups
+  const [manuallyCollapsedAddDialogSubdomains, setManuallyCollapsedAddDialogSubdomains] = useState<Record<string, boolean>>({});
+
   const handleAccessLevelChange = (index: number, level: AccessLevel) => {
     setPermissions(prev =>
       prev.map((p, i) =>
@@ -249,6 +255,12 @@ function App() {
   };
   const handleDialogPermissionToggle = (permission: any, subdomain: string) => {
     setDialogSelectedPermissions(prev => {
+      const normalizeActions = (actions: any) =>
+        Array.isArray(actions)
+          ? actions
+          : typeof actions === 'string'
+            ? actions.split('-').map((s: string) => s.trim())
+            : [];
       const existing = prev.find(p => p.permission === permission.name && p.subdomain === subdomain);
       if (existing) {
         return prev.map(p =>
@@ -257,13 +269,15 @@ function App() {
             : p
         );
       } else {
+        const normalizedActions = normalizeActions(permission.supportedActions);
         return [...prev, {
           domain: dialogCategory,
           subdomain: subdomain,
           permission: permission.name,
           isEnabled: true,
-          accessLevel: permission.supportedActions.includes('View') ? 'View' : undefined,
+          accessLevel: normalizedActions.includes('View') ? 'View' : undefined,
           isSensitive: permission.isSensitive,
+          supportedActions: normalizedActions,
         }];
       }
     });
@@ -511,9 +525,9 @@ function App() {
         return (
           <div
             key={subdomain}
-            className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-all"
+            className={`mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white transition-all ${expanded ? '' : ''}`}
           >
-            <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 p-4">
+            <div className={`flex items-center justify-between bg-white p-4 min-h-[56px] ${expanded ? 'border-b border-gray-200' : ''}`}>
               <div
                 className="flex flex-1 cursor-pointer items-center gap-4"
                 onClick={() => handleEditDialogSubdomainChevron(subdomain)}
@@ -526,8 +540,10 @@ function App() {
                 <span className="text-sm font-medium text-gray-900">
                   {highlightMatch(subdomain, editDialogSearch)}
                 </span>
-                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-600">
-                  {safeSubPermissions.length} permissions
+                <span className="rounded-full bg-gray-100 text-gray-900 h-[17px] px-[6px] pt-[2px] pb-[3px] text-xs font-medium flex items-center justify-center">
+                  <span className="text-[10px] font-medium text-[#696968]">{safeSubPermissions.filter((p: any) => p.isEnabled).length}</span>
+                  <span className="mx-0.5 text-[10px] text-[#696968] opacity-40 font-sans">/</span>
+                  <span className="text-[10px] text-[#696968] opacity-60 font-medium">{safeSubPermissions.length}</span>
                 </span>
               </div>
               {expanded && (
@@ -543,7 +559,7 @@ function App() {
                       )
                     );
                   }}
-                  className="ml-4 rounded-full border border-gray-300 bg-white px-4 py-1.5 text-sm font-medium text-primary hover:bg-purple-50"
+                  className="ml-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
                 >
                   {safeSubPermissions.every((permission: any) => permission.isEnabled)
                     ? 'Disable all'
@@ -554,13 +570,20 @@ function App() {
             {expanded && (
               <div className="p-4">
                 {safeSubPermissions.map((permission: any) => {
+                  console.log('ADD DIALOG PERMISSION', permission);
                   const found = editDomainPermissions.find(
                     p => p.permission === permission.permission && p.subdomain === permission.subdomain
                   );
+                  // Normalize supportedActions to array at render time
+                  const normalizedActions = Array.isArray(permission.supportedActions)
+                    ? permission.supportedActions
+                    : typeof permission.supportedActions === 'string'
+                      ? permission.supportedActions.split('-').map((s: string) => s.trim())
+                      : [];
                   return permission && permission.supportedActions ? (
                     <div
                       key={permission.permission}
-                      className="mb-2 flex items-center justify-between rounded-lg p-4 hover:bg-gray-50"
+                      className="mb-2 flex items-center justify-between rounded-lg p-4 h-16 hover:bg-gray-50"
                     >
                       <div className="flex items-center">
                         <label className="relative inline-flex cursor-pointer items-center">
@@ -594,42 +617,36 @@ function App() {
                           </span>
                         )}
                       </div>
-                      {(() => {
-                        const normalizedActions = Array.isArray(permission.supportedActions)
-                          ? permission.supportedActions
-                          : typeof permission.supportedActions === 'string'
-                            ? permission.supportedActions.split(' - ').map((s: string) => s.trim())
-                            : [];
-                        return found?.isEnabled &&
-                          normalizedActions.length > 0 &&
-                          ['View', 'Propose', 'Edit'].some(action => normalizedActions.includes(action)) &&
-                          !normalizedActions.includes('Yes - No') && (
-                            <div className="ml-4 inline-flex rounded-lg border border-gray-200 bg-white p-1">
-                              {['View', 'Propose', 'Edit'].map(action => (
-                                <button
-                                  key={action}
-                                  disabled={!normalizedActions.includes(action)}
-                                  onClick={() => {
-                                    setEditDomainPermissions(prev =>
-                                      prev.map(p =>
-                                        p.permission === permission.permission && p.subdomain === permission.subdomain
-                                          ? { ...p, accessLevel: action as AccessLevel }
-                                          : p
-                                      )
-                                    );
-                                  }}
-                                  className={`rounded-md px-3 py-1 text-sm font-medium ${
-                                    found.accessLevel === action
-                                      ? 'bg-primary text-white'
-                                      : 'text-gray-700 hover:bg-gray-50'
-                                  } disabled:cursor-not-allowed disabled:opacity-50`}
-                                >
-                                  {action}
-                                </button>
-                              ))}
-                            </div>
-                          );
-                      })()}
+                      {/* Segmented control for access levels */}
+                      {found?.isEnabled &&
+                        normalizedActions.length > 0 &&
+                        ['View', 'Propose', 'Edit'].some(action => normalizedActions.includes(action)) &&
+                        !normalizedActions.includes('Yes - No') && (
+                          <div className="ml-4 flex h-8 p-0.5 bg-gray-100 rounded-lg">
+                            {['View', 'Propose', 'Edit'].map(action => (
+                              <button
+                                key={action}
+                                disabled={!normalizedActions.includes(action)}
+                                onClick={() => {
+                                  setEditDomainPermissions(prev =>
+                                    prev.map(p =>
+                                      p.permission === found.permission && p.subdomain === found.subdomain
+                                        ? { ...p, accessLevel: action as AccessLevel }
+                                        : p
+                                    )
+                                  );
+                                }}
+                                className={`rounded-md px-3 h-7 text-sm font-medium border-0 shadow-none ${
+                                  found.accessLevel === action
+                                    ? 'bg-white text-gray-900'
+                                    : 'bg-transparent text-gray-700 hover:bg-gray-50'
+                                } disabled:cursor-not-allowed disabled:opacity-50`}
+                              >
+                                {action}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                     </div>
                   ) : null;
                 })}
@@ -642,15 +659,20 @@ function App() {
       {ungroupedEntries.map(([subdomain, subPermissions]) => {
         const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
         return safeSubPermissions.map((permission: any) => {
+          console.log('ADD DIALOG PERMISSION', permission);
           const found = editDomainPermissions.find(
             p => p.permission === permission.permission && p.subdomain === permission.subdomain
           );
+          // Normalize supportedActions to array at render time
+          const normalizedActions = Array.isArray(permission.supportedActions)
+            ? permission.supportedActions
+            : typeof permission.supportedActions === 'string'
+              ? permission.supportedActions.split('-').map((s: string) => s.trim())
+              : [];
           return permission && permission.supportedActions ? (
             <div
               key={permission.permission}
-              className={`mb-2 flex items-center justify-between rounded-lg border p-4 ${
-                found?.isEnabled ? 'border-primary' : 'border-gray-200'
-              } hover:border-primary hover:bg-gray-50`}
+              className="mb-2 flex items-center justify-between rounded-lg p-4 h-16 hover:bg-gray-50"
             >
               <div className="flex items-center">
                 <label className="relative inline-flex cursor-pointer items-center">
@@ -684,45 +706,222 @@ function App() {
                   </span>
                 )}
               </div>
-              {(() => {
-                const normalizedActions = Array.isArray(permission.supportedActions)
-                  ? permission.supportedActions
-                  : typeof permission.supportedActions === 'string'
-                    ? permission.supportedActions.split(' - ').map((s: string) => s.trim())
-                    : [];
-                return found?.isEnabled &&
-                  normalizedActions.length > 0 &&
-                  ['View', 'Propose', 'Edit'].some(action => normalizedActions.includes(action)) &&
-                  !normalizedActions.includes('Yes - No') && (
-                    <div className="ml-4 inline-flex rounded-lg border border-gray-200 bg-white p-1">
-                      {['View', 'Propose', 'Edit'].map(action => (
-                        <button
-                          key={action}
-                          disabled={!normalizedActions.includes(action)}
-                          onClick={() => {
-                            setEditDomainPermissions(prev =>
-                              prev.map(p =>
-                                p.permission === permission.permission && p.subdomain === permission.subdomain
-                                  ? { ...p, accessLevel: action as AccessLevel }
-                                  : p
-                              )
-                            );
-                          }}
-                          className={`rounded-md px-3 py-1 text-sm font-medium ${
-                            found.accessLevel === action
-                              ? 'bg-primary text-white'
-                              : 'text-gray-700 hover:bg-gray-50'
-                          } disabled:cursor-not-allowed disabled:opacity-50`}
-                        >
-                          {action}
-                        </button>
-                      ))}
-                    </div>
-                  );
-              })()}
+              {/* Segmented control for access levels */}
+              {found?.isEnabled &&
+                normalizedActions.length > 0 &&
+                ['View', 'Propose', 'Edit'].some(action => normalizedActions.includes(action)) &&
+                !normalizedActions.includes('Yes - No') && (
+                  <div className="ml-4 flex h-8 p-0.5 bg-gray-100 rounded-lg">
+                    {['View', 'Propose', 'Edit'].map(action => (
+                      <button
+                        key={action}
+                        disabled={!normalizedActions.includes(action)}
+                        onClick={() => {
+                          setEditDomainPermissions(prev =>
+                            prev.map(p =>
+                              p.permission === found.permission && p.subdomain === found.subdomain
+                                ? { ...p, accessLevel: action as AccessLevel }
+                                : p
+                            )
+                          );
+                        }}
+                        className={`rounded-md px-3 h-7 text-sm font-medium border-0 shadow-none ${
+                          found.accessLevel === action
+                            ? 'bg-white text-gray-900'
+                            : 'bg-transparent text-gray-700 hover:bg-gray-50'
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        {action}
+                      </button>
+                    ))}
+                  </div>
+                )}
             </div>
           ) : null;
         });
+      })}
+    </div>
+  );
+
+  // Add dialog permissions content
+  const addDialogGroupedBySubdomain = dialogSelectedPermissions.reduce((acc: Record<string, typeof dialogSelectedPermissions>, permission) => {
+    const subdomain = permission.subdomain || '-';
+    if (!acc[subdomain]) acc[subdomain] = [];
+    acc[subdomain].push(permission);
+    return acc;
+  }, {});
+  const addDialogQ = addDialogSearch.trim().toLowerCase();
+  const addDialogFilterPermission = (permission: any) =>
+    permission &&
+    typeof permission.permission === 'string' &&
+    (
+      permission.permission.toLowerCase().includes(addDialogQ) ||
+      (permission.subdomain && typeof permission.subdomain === 'string' && permission.subdomain.toLowerCase().includes(addDialogQ))
+    );
+  const addDialogFilteredGrouped = Object.entries(addDialogGroupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
+    const filteredPerms = (perms as any[]).filter(addDialogFilterPermission);
+    if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
+    return acc;
+  }, {});
+  const addDialogGroupedEntries = Object.entries(addDialogFilteredGrouped).filter(([subdomain]) => subdomain !== '-') as [string, any[]][];
+  const addDialogUngroupedEntries = Object.entries(addDialogFilteredGrouped).filter(([subdomain]) => subdomain === '-') as [string, any[]][];
+  const addDialogPermissionsContent = addDialogGroupedEntries.length === 0 && addDialogUngroupedEntries.length === 0 ? (
+    <div className="p-4 text-gray-500">No permissions found.</div>
+  ) : (
+    <div>
+      {/* Grouped permissions */}
+      {addDialogGroupedEntries.map(([subdomain, subPermissions], groupIndex) => {
+        const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
+        const expanded = addDialogExpandedSubdomains[subdomain] || false;
+        return (
+          <div
+            key={subdomain}
+            className={`mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white transition-all ${expanded ? '' : ''}`}
+          >
+            <div className={`flex items-center justify-between bg-white p-4 min-h-[56px] ${expanded ? 'border-b border-gray-200' : ''}`}>
+              <div className="flex flex-1 items-center gap-4 cursor-pointer" onClick={() => handleAddDialogSubdomainChevron(subdomain)}>
+                <ChevronDownIcon className={`h-5 w-5 text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+                <span className="text-sm font-medium text-gray-900">
+                  {highlightMatch(subdomain, addDialogSearch)}
+                </span>
+                <span className="rounded-full bg-gray-100 text-gray-900 h-[17px] px-[6px] pt-[2px] pb-[3px] text-xs font-medium flex items-center justify-center">
+                  <span className="text-[10px] font-medium text-[#696968]">{safeSubPermissions.filter((p: any) => p.isEnabled).length}</span>
+                  <span className="mx-0.5 text-[10px] text-[#696968] opacity-40 font-sans">/</span>
+                  <span className="text-[10px] text-[#696968] opacity-60 font-medium">{safeSubPermissions.length}</span>
+                </span>
+              </div>
+              {expanded && (
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    const allEnabled = safeSubPermissions.every((permission: any) => permission.isEnabled);
+                    setDialogSelectedPermissions(prev =>
+                      prev.map(p =>
+                        p.subdomain === subdomain
+                          ? { ...p, isEnabled: !allEnabled }
+                          : p
+                      )
+                    );
+                  }}
+                  className="ml-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                >
+                  {safeSubPermissions.every((permission: any) => permission.isEnabled)
+                    ? 'Disable all'
+                    : 'Enable all'}
+                </button>
+              )}
+            </div>
+            {expanded && (
+              <div className="p-4">
+                {safeSubPermissions.map((permission: any) => {
+                  console.log('ADD DIALOG PERMISSION', permission);
+                  // Normalize supportedActions to array at render time
+                  const normalizedActions = Array.isArray(permission.supportedActions)
+                    ? permission.supportedActions
+                    : typeof permission.supportedActions === 'string'
+                      ? permission.supportedActions.split('-').map((s: string) => s.trim())
+                      : [];
+                  return (
+                    <div
+                      key={permission.permission}
+                      className="mb-2 flex items-center rounded-lg p-4 h-16 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center flex-1 min-w-0">
+                        <label className="relative inline-flex cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            checked={!!permission.isEnabled}
+                            onChange={() => handleAddDialogPermissionToggle(permission, subdomain)}
+                            className="peer sr-only"
+                          />
+                          <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20"></div>
+                        </label>
+                        <span className="ml-3 text-sm font-medium text-gray-900">
+                          {highlightMatch(permission.permission, addDialogSearch)}
+                        </span>
+                        {permission.isSensitive && (
+                          <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+                            Sensitive
+                          </span>
+                        )}
+                        {permission.noScopeLimit && (
+                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                            No scope limit
+                          </span>
+                        )}
+                      </div>
+                      {/* Segmented control for access levels (add dialog) */}
+                      {permission.isEnabled &&
+                        normalizedActions.length > 0 &&
+                        ['View', 'Propose', 'Edit'].some(action => normalizedActions.includes(action)) &&
+                        !normalizedActions.includes('Yes - No') && (
+                          <div className="ml-4 flex h-8 p-0.5 bg-gray-100 rounded-lg">
+                            {['View', 'Propose', 'Edit'].map(action => (
+                              <button
+                                key={action}
+                                disabled={!normalizedActions.includes(action)}
+                                onClick={() => {
+                                  setDialogSelectedPermissions(prev =>
+                                    prev.map(p =>
+                                      p.permission === permission.permission && p.subdomain === permission.subdomain
+                                        ? { ...p, accessLevel: action as AccessLevel }
+                                        : p
+                                    )
+                                  );
+                                }}
+                                className={`rounded-md px-3 h-7 text-sm font-medium border-0 shadow-none ${
+                                  permission.accessLevel === action
+                                    ? 'bg-white text-gray-900'
+                                    : 'bg-transparent text-gray-700 hover:bg-gray-50'
+                                } disabled:cursor-not-allowed disabled:opacity-50`}
+                              >
+                                {action}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {/* Ungrouped permissions */}
+      {addDialogUngroupedEntries.map(([subdomain, subPermissions]) => {
+        const safeSubPermissions = Array.isArray(subPermissions) ? subPermissions : [];
+        return safeSubPermissions.map((permission: any) => (
+          <div
+            key={permission.permission}
+            className="mb-2 flex items-center justify-between rounded-lg p-4 h-16 hover:bg-gray-50"
+          >
+            <div className="flex items-center">
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={!!permission.isEnabled}
+                  onChange={() => handleAddDialogPermissionToggle(permission, subdomain)}
+                  className="peer sr-only"
+                />
+                <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20"></div>
+              </label>
+              <span className="ml-3 text-sm font-medium text-gray-900">
+                {highlightMatch(permission.permission, addDialogSearch)}
+              </span>
+              {permission.isSensitive && (
+                <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+                  Sensitive
+                </span>
+              )}
+              {permission.noScopeLimit && (
+                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  No scope limit
+                </span>
+              )}
+            </div>
+          </div>
+        ));
       })}
     </div>
   );
@@ -850,7 +1049,7 @@ function App() {
                     .map((domain: any) => (
                       <button
                         key={domain.name}
-                        onClick={() => { handleSelectCategory(domain.name); handleCloseCategoryPopover(); }}
+                        onClick={() => handleSelectCategory(domain.name)}
                         className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                       >
                         {domain.name}
@@ -971,6 +1170,80 @@ function App() {
                       >
                         Save
                       </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Add Permission dialog */}
+            {isDialogOpen && (
+              <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
+                <div className="flex min-h-screen items-center justify-center w-full">
+                  {/* Backdrop */}
+                  <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={handleCloseDialog} />
+                  {/* Dialog */}
+                  <div className="relative w-[704px] max-w-full" style={{ maxHeight: 'calc(100vh - 64px)', marginTop: 32, marginBottom: 32 }}>
+                    <div className="flex flex-col h-[calc(100vh-64px)] bg-white rounded-2xl shadow-xl overflow-hidden" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+                      {/* Header with extra bottom padding */}
+                      <div className="sticky top-0 z-10 bg-white px-6 pt-4 pb-4 border-b border-gray-200 flex items-center justify-between min-h-[48px]">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          Add Permissions - {dialogCategory}
+                        </h2>
+                        <button
+                          onClick={handleCloseDialog}
+                          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      {/* Content */}
+                      <div className="flex-1 overflow-y-auto p-6">
+                        {/* Search (not sticky) */}
+                        <div className="relative mb-6">
+                          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                          </div>
+                          <input
+                            type="text"
+                            value={addDialogSearch}
+                            onChange={e => setAddDialogSearch(e.target.value)}
+                            placeholder="Search permission..."
+                            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-10 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          {addDialogSearch && (
+                            <button
+                              onClick={() => setAddDialogSearch('')}
+                              className="absolute inset-y-0 right-0 flex items-center pr-3"
+                              tabIndex={0}
+                              aria-label="Clear search"
+                            >
+                              <XMarkIcon className="h-5 w-5 text-gray-400 hover:text-gray-500" />
+                            </button>
+                          )}
+                        </div>
+                        {/* Permissions Content */}
+                        {addDialogPermissionsContent}
+                      </div>
+                      {/* Footer */}
+                      <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 flex items-center justify-end gap-4 px-6 py-4 min-h-[48px]">
+                        <button
+                          type="button"
+                          onClick={handleCloseDialog}
+                          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDialogSave}
+                          disabled={!dialogSelectedPermissions.some(p => p.isEnabled)}
+                          className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {dialogSelectedPermissions.filter(p => p.isEnabled).length > 0
+                            ? `Add ${dialogSelectedPermissions.filter(p => p.isEnabled).length} permission${dialogSelectedPermissions.filter(p => p.isEnabled).length === 1 ? '' : 's'}`
+                            : 'Add permissions'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1154,6 +1427,71 @@ function App() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [categoryPopoverAnchor]);
+
+  // Expand groups with matches on search, respect manual collapse
+  useEffect(() => {
+    if (addDialogSearch === '' || dialogSelectedPermissions.length === 0) return;
+    const q = addDialogSearch.trim().toLowerCase();
+    const groupedBySubdomain = dialogSelectedPermissions.reduce((acc: Record<string, any[]>, permission: any) => {
+      const subdomain = permission.subdomain || '-';
+      if (!acc[subdomain]) acc[subdomain] = [];
+      acc[subdomain].push(permission);
+      return acc;
+    }, {});
+    const filterPermission = (permission: any) =>
+      permission &&
+      typeof permission.permission === 'string' &&
+      (
+        permission.permission.toLowerCase().includes(q) ||
+        (permission.subdomain && typeof permission.subdomain === 'string' && permission.subdomain.toLowerCase().includes(q))
+      );
+    const filteredGrouped = Object.entries(groupedBySubdomain).reduce((acc: any, [subdomain, perms]) => {
+      const filteredPerms = (perms as any[]).filter(filterPermission);
+      if (filteredPerms.length > 0) acc[subdomain] = filteredPerms;
+      return acc;
+    }, {});
+    setAddDialogExpandedSubdomains(prev => {
+      const newState = { ...prev };
+      Object.keys(groupedBySubdomain).forEach(subdomain => {
+        if (filteredGrouped[subdomain]) {
+          if (!manuallyCollapsedAddDialogSubdomains[subdomain]) {
+            newState[subdomain] = true;
+          }
+        } else {
+          newState[subdomain] = false;
+        }
+      });
+      return newState;
+    });
+  }, [addDialogSearch, dialogSelectedPermissions, manuallyCollapsedAddDialogSubdomains]);
+
+  // Reset manual collapse state when search changes
+  useEffect(() => {
+    setManuallyCollapsedAddDialogSubdomains({});
+  }, [addDialogSearch]);
+
+  // Handler for toggling a permission in add dialog
+  const handleAddDialogPermissionToggle = (permission: any, subdomain: string) => {
+    setDialogSelectedPermissions(prev =>
+      prev.map(p =>
+        p.permission === permission.permission && p.subdomain === subdomain
+          ? { ...p, isEnabled: !p.isEnabled }
+          : p
+      )
+    );
+  };
+
+  // Handler for expanding add dialog groups
+  const handleAddDialogSubdomainChevron = (subdomain: string) => {
+    setAddDialogExpandedSubdomains(prev => ({
+      ...prev,
+      [subdomain]: !prev[subdomain]
+    }));
+    setManuallyCollapsedAddDialogSubdomains(prev => ({
+      ...prev,
+      [subdomain]: addDialogExpandedSubdomains[subdomain] ? true : false
+    }));
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
