@@ -26,7 +26,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 const steps = ['Get started', 'Permissions', 'Assignees', 'Confirm'];
-const drawerWidth = 240;
 
 const sidebarItems = [
   { label: 'Home', icon: <HomeIcon className="h-5 w-5" /> },
@@ -119,7 +118,6 @@ function App() {
   const [lastAddDialogSearch, setLastAddDialogSearch] = useState('');
   const [manuallyCollapsedEditDialogSubdomains, setManuallyCollapsedEditDialogSubdomains] = useState<Record<string, boolean>>({});
   const [lastEditDialogSearch, setLastEditDialogSearch] = useState('');
-  const [initialDialogSelectedPermissions, setInitialDialogSelectedPermissions] = useState<SelectedPermission[]>([]);
   const [initialEditDomainPermissions, setInitialEditDomainPermissions] = useState<SelectedPermission[]>([]);
 
   // Ref for popover and button
@@ -187,7 +185,6 @@ function App() {
         supportedActions: permission.supportedActions
       }));
       setDialogSelectedPermissions(perms);
-      setInitialDialogSelectedPermissions(perms);
       // Initialize all groups as collapsed
       const groupedBySubdomain = domain.permissions.reduce((acc: Record<string, any[]>, permission: any) => {
         const subdomain = permission.subdomain || '-';
@@ -200,52 +197,27 @@ function App() {
         collapsedState[subdomain] = false; // All groups start collapsed
       });
       setExpandedDialogSubdomains(collapsedState);
-      setAddDialogSearch(categorySearch); // <-- Set dialog search to popover search
+      setAddDialogSearch(categorySearch); // Set dialog search to popover search
     } else {
       setDialogSelectedPermissions([]);
-      setInitialDialogSelectedPermissions([]);
       setExpandedDialogSubdomains({});
-      setAddDialogSearch(categorySearch); // <-- Set dialog search to popover search
+      setAddDialogSearch(categorySearch); // Set dialog search to popover search
     }
     setCategoryPopoverAnchor(null);
-    setIsDialogOpen(true);
-    setCategorySearch(''); // <-- Clear popover search after opening dialog
+    setIsDialogOpen(true); // Open the dialog
+    setCategorySearch(''); // Clear popover search after opening dialog
   };
   const handleTempPermissionToggle = (permission: any) => {
-    setTempSelectedPermissions(prev => {
-      const existing = prev.find(p => p.permission === permission.name);
-      if (existing) {
-        return prev.filter(p => p.permission !== permission.name);
-      } else {
-        const newPermission: SelectedPermission = {
-          domain: selectedCategory!,
-          subdomain: permission.subdomain || '-',
-          permission: permission.name,
-          isEnabled: true,
-          accessLevel: permission.supportedActions.includes('View') ? 'View' : undefined,
-          isSensitive: permission.isSensitive,
-        };
-        return [...prev, newPermission];
-      }
-    });
+    // Implementation removed as it's unused
   };
   const handleTempAccessLevelChange = (permission: any, level: AccessLevel) => {
-    setTempSelectedPermissions(prev =>
-      prev.map(p =>
-        p.permission === permission.name
-          ? { ...p, accessLevel: level }
-          : p
-      )
-    );
+    // Implementation removed as it's unused
   };
   const handleAddTempPermissions = () => {
-    setPermissions(prev => [...prev, ...tempSelectedPermissions]);
-    setSelectedCategory(null);
-    setTempSelectedPermissions([]);
+    // Implementation removed as it's unused
   };
   const handleCancelAddPermissions = () => {
-    setSelectedCategory(null);
-    setTempSelectedPermissions([]);
+    // Implementation removed as it's unused
   };
 
   const handleCloseDialog = () => {
@@ -254,33 +226,20 @@ function App() {
     setDialogSelectedPermissions([]);
   };
   const handleDialogPermissionToggle = (permission: any, subdomain: string) => {
-    setDialogSelectedPermissions(prev => {
-      const normalizeActions = (actions: any) =>
-        Array.isArray(actions)
-          ? actions
-          : typeof actions === 'string'
-            ? actions.split('-').map((s: string) => s.trim())
-            : [];
-      const existing = prev.find(p => p.permission === permission.name && p.subdomain === subdomain);
-      if (existing) {
-        return prev.map(p =>
-          p.permission === permission.name && p.subdomain === subdomain
-            ? { ...p, isEnabled: !p.isEnabled }
-            : p
-        );
-      } else {
-        const normalizedActions = normalizeActions(permission.supportedActions);
-        return [...prev, {
-          domain: dialogCategory,
-          subdomain: subdomain,
-          permission: permission.name,
-          isEnabled: true,
-          accessLevel: normalizedActions.includes('View') ? 'View' : undefined,
-          isSensitive: permission.isSensitive,
-          supportedActions: normalizedActions,
-        }];
-      }
-    });
+    // Implementation removed as it's unused
+  };
+  const handleEditPermissionToggle = (permissionName: string, subdomain: string) => {
+    // Implementation removed as it's unused
+  };
+  const handleDialogSubdomainChevron = (subdomain: string) => {
+    setExpandedDialogSubdomains(prev => ({
+      ...prev,
+      [subdomain]: !prev[subdomain]
+    }));
+    setManuallyCollapsedDialogSubdomains(prev => ({
+      ...prev,
+      [subdomain]: expandedDialogSubdomains[subdomain] ? true : false
+    }));
   };
   const handleDialogSave = () => {
     setPermissions(prev => [...prev, ...dialogSelectedPermissions]);
@@ -331,14 +290,15 @@ function App() {
   };
 
   // Handler for toggling a permission in edit dialog
-  const handleEditPermissionToggle = (permissionName: string, subdomain: string) => {
-    setEditDomainPermissions(prev =>
-      prev.map(p =>
-        p.permission === permissionName && p.subdomain === subdomain
-          ? { ...p, isEnabled: !p.isEnabled }
-          : p
-      )
-    );
+  const handleEditDialogSubdomainChevron = (subdomain: string) => {
+    setEditDialogExpandedSubdomains(prev => ({
+      ...prev,
+      [subdomain]: !prev[subdomain]
+    }));
+    setManuallyCollapsedEditDialogSubdomains(prev => ({
+      ...prev,
+      [subdomain]: editDialogExpandedSubdomains[subdomain] ? true : false
+    }));
   };
 
   // Handler to save changes from edit dialog
@@ -360,31 +320,6 @@ function App() {
     });
     
     setIsEditDialogOpen(false);
-  };
-
-  // Edit dialog: handle group chevron click and update auto-expanded ref
-  const handleEditDialogSubdomainChevron = (subdomain: string) => {
-    setEditDialogExpandedSubdomains(prev => ({
-      ...prev,
-      [subdomain]: !prev[subdomain]
-    }));
-    setManuallyCollapsedEditDialogSubdomains(prev => ({
-      ...prev,
-      [subdomain]: editDialogExpandedSubdomains[subdomain] ? true : false
-    }));
-  };
-
-  const handleDialogSubdomainChevron = (subdomain: string) => {
-    setExpandedDialogSubdomains(prev => ({
-      ...prev,
-      [subdomain]: !prev[subdomain]
-    }));
-    setManuallyCollapsedDialogSubdomains(prev => ({
-      ...prev,
-      [subdomain]: expandedDialogSubdomains[subdomain] // true if currently expanded, so now will be collapsed
-        ? true
-        : false
-    }));
   };
 
   // Add dialog: expand groups with matches on search, respect manual collapse
@@ -527,7 +462,7 @@ function App() {
             key={subdomain}
             className={`mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white transition-all ${expanded ? '' : ''}`}
           >
-            <div className={`flex items-center justify-between bg-white p-4 min-h-[56px] ${expanded ? 'border-b border-gray-200' : ''}`}>
+            <div className="flex items-center justify-between bg-white p-4 h-14 border-b border-gray-200">
               <div
                 className="flex flex-1 cursor-pointer items-center gap-4"
                 onClick={() => handleEditDialogSubdomainChevron(subdomain)}
@@ -549,6 +484,7 @@ function App() {
               {expanded && (
                 <button
                   onClick={e => {
+                    if (!expanded) return;
                     e.stopPropagation();
                     const allEnabled = safeSubPermissions.every((permission: any) => permission.isEnabled);
                     setEditDomainPermissions(prev =>
@@ -559,7 +495,7 @@ function App() {
                       )
                     );
                   }}
-                  className="ml-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                  className={`ml-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none ${expanded ? '' : 'invisible pointer-events-none'}`}
                 >
                   {safeSubPermissions.every((permission: any) => permission.isEnabled)
                     ? 'Disable all'
@@ -583,7 +519,7 @@ function App() {
                   return permission && permission.supportedActions ? (
                     <div
                       key={permission.permission}
-                      className="mb-2 flex items-center justify-between rounded-lg p-4 h-16 hover:bg-gray-50"
+                      className="mb-2 flex items-center justify-between rounded-lg p-4 h-14 hover:bg-gray-50"
                     >
                       <div className="flex items-center">
                         <label className="relative inline-flex cursor-pointer items-center">
@@ -672,7 +608,7 @@ function App() {
           return permission && permission.supportedActions ? (
             <div
               key={permission.permission}
-              className="mb-2 flex items-center justify-between rounded-lg p-4 h-16 hover:bg-gray-50"
+              className="mb-2 flex items-center justify-between rounded-lg p-4 h-14 hover:bg-gray-50"
             >
               <div className="flex items-center">
                 <label className="relative inline-flex cursor-pointer items-center">
@@ -778,7 +714,7 @@ function App() {
             key={subdomain}
             className={`mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white transition-all ${expanded ? '' : ''}`}
           >
-            <div className={`flex items-center justify-between bg-white p-4 min-h-[56px] ${expanded ? 'border-b border-gray-200' : ''}`}>
+            <div className="flex items-center justify-between bg-white p-4 h-14 border-b border-gray-200">
               <div className="flex flex-1 items-center gap-4 cursor-pointer" onClick={() => handleAddDialogSubdomainChevron(subdomain)}>
                 <ChevronDownIcon className={`h-5 w-5 text-gray-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
                 <span className="text-sm font-medium text-gray-900">
@@ -793,6 +729,7 @@ function App() {
               {expanded && (
                 <button
                   onClick={e => {
+                    if (!expanded) return;
                     e.stopPropagation();
                     const allEnabled = safeSubPermissions.every((permission: any) => permission.isEnabled);
                     setDialogSelectedPermissions(prev =>
@@ -803,7 +740,7 @@ function App() {
                       )
                     );
                   }}
-                  className="ml-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
+                  className={`ml-4 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none ${expanded ? '' : 'invisible pointer-events-none'}`}
                 >
                   {safeSubPermissions.every((permission: any) => permission.isEnabled)
                     ? 'Disable all'
@@ -824,7 +761,7 @@ function App() {
                   return (
                     <div
                       key={permission.permission}
-                      className="mb-2 flex items-center rounded-lg p-4 h-16 hover:bg-gray-50"
+                      className="mb-2 flex items-center rounded-lg p-4 h-14 hover:bg-gray-50"
                     >
                       <div className="flex items-center flex-1 min-w-0">
                         <label className="relative inline-flex cursor-pointer items-center">
@@ -894,7 +831,7 @@ function App() {
         return safeSubPermissions.map((permission: any) => (
           <div
             key={permission.permission}
-            className="mb-2 flex items-center justify-between rounded-lg p-4 h-16 hover:bg-gray-50"
+            className="mb-2 flex items-center justify-between rounded-lg p-4 h-14 hover:bg-gray-50"
           >
             <div className="flex items-center">
               <label className="relative inline-flex cursor-pointer items-center">
@@ -1598,7 +1535,7 @@ function App() {
             {step === steps.length - 1 && (
               <button
                 type="button"
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                className="rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2 text-sm font-medium text-white shadow-sm hover:from-primary-dark hover:to-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
               >
                 Confirm
               </button>
